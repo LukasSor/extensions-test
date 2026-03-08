@@ -1,0 +1,26 @@
+.glance-math {
+  position: relative;
+}
+
+.glance-math-expr {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  word-break: break-all;
+}
+
+.glance-math-result {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.glance-math-badge {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+  border-radius: 4px;
+  padding: 2px 7px;
+}

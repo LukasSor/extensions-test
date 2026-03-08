@@ -11,9 +11,44 @@
       "type": "command"
     },
     {
+      "path": "plugins/define",
+      "name": "Define",
+      "description": "Look up word definitions using the Free Dictionary API.",
+      "version": "1.0.0",
+      "type": "command"
+    },
+    {
+      "path": "plugins/time",
+      "name": "Time",
+      "description": "Show current time in a timezone or city.",
+      "version": "1.0.0",
+      "type": "command"
+    },
+    {
+      "path": "plugins/qr",
+      "name": "QR Code",
+      "description": "Generate a QR code for a URL.",
+      "version": "1.0.0",
+      "type": "command"
+    },
+    {
+      "path": "plugins/password",
+      "name": "Password",
+      "description": "Generate a random password.",
+      "version": "1.0.0",
+      "type": "command"
+    },
+    {
       "path": "plugins/tmdb-slot",
       "name": "TMDb",
       "description": "Shows movie/TV show details above search results.",
+      "version": "1.0.0",
+      "type": "slot"
+    },
+    {
+      "path": "plugins/math-slot",
+      "name": "Math",
+      "description": "Evaluates math expressions and shows the result above search results.",
       "version": "1.0.0",
       "type": "slot"
     }
