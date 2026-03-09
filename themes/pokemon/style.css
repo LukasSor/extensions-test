@@ -458,12 +458,12 @@ body::after {
   box-shadow: none ;
 }
 
-.glance-box,
-.command-result {
+.glance-box {
   background: var(--bg-light) ;
   border: none ;
   border-radius: 12px ;
   box-shadow: none ;
+  padding: 1em;
 }
 
 .ac-dropdown {
