@@ -196,6 +196,17 @@ Starter-inspired color schemes: Pikachu (yellow), Bulbasaur (green), Charmander 
 <details>
 <summary>Engines</summary>
 
+### DuckDuckGo Images
+
+Adds the very powerful DDG images search engine to degoog, adding an extra ~70 images per page to the image results.
+
+<details>
+<summary>Screenshot</summary>
+
+![Ecosia](engines/duckduckgo-images/screenshots/1.webp)
+
+</details>
+
 ### Ecosia
 
 Adds the Ecosia search engine to degoog. Ecosia may return no results when Cloudflare blocks server-side requests; use another engine if that happens.
@@ -226,6 +237,17 @@ Adds the Internet Archive as a file-type engine. Searches archive.org for downlo
 <summary>Screenshot</summary>
 
 ![Internet Archive](engines/internet-archive/screenshots/1.png)
+
+</details>
+
+### Brave API Search
+
+Adds the Brave Search API as a web engine. Requires a free API key from brave.com/search/api (2,000 queries/month on the free tier).
+
+<details>
+<summary>Screenshot</summary>
+
+![Brave API Search](engines/brave-api-search/screenshots/1.png)
 
 </details>
 

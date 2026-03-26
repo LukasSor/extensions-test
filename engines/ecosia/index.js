@@ -41,9 +41,11 @@ export default class EcosiaEngine {
     if (p > 0) params.set("p", String(p));
     const url = `https://www.ecosia.org/search?${params.toString()}`;
     const doFetch = context?.fetch ?? fetch;
-    const response = await doFetch(url, {
-      headers: _getBrowserHeaders(),
-    });
+    const headers = {
+      ..._getBrowserHeaders(),
+      "Accept-Language": context?.buildAcceptLanguage?.() ?? "en,en-US;q=0.9",
+    };
+    const response = await doFetch(url, { headers });
     const html = await response.text();
     if (html.includes(CLOUDFLARE_CHALLENGE_MARKER)) {
       throw new Error(

@@ -85,20 +85,44 @@ export default class StartpageEngine {
       description:
         "Open result links via Startpage's proxy so the destination site does not see your IP.",
     },
+    {
+      key: "safeSearch",
+      label: "Safe Search",
+      type: "select",
+      options: ["off", "on"],
+      description: "Filter explicit content from search results.",
+    },
   ];
 
   useAnonymousView = false;
+  safeSearch = "off";
 
   configure(settings) {
     this.useAnonymousView =
       settings.useAnonymousView === true ||
       settings.useAnonymousView === "true";
+    if (typeof settings.safeSearch === "string") {
+      this.safeSearch = settings.safeSearch;
+    }
   }
 
-  async executeSearch(query, page = 1, _timeFilter, context) {
+  async executeSearch(query, page = 1, timeFilter, context) {
     const p = Math.max(0, (page || 1) - 1);
     const params = new URLSearchParams({ q: query, cat: "web" });
     if (p > 0) params.set("page", String(p + 1));
+    if (this.safeSearch === "on") params.set("filter", "safe");
+
+    if (context?.lang) params.set("language", context.lang);
+
+    const timeMap = { hour: "h", day: "d", week: "w", month: "m", year: "y" };
+    if (timeFilter && timeFilter !== "any" && timeFilter !== "custom" && timeMap[timeFilter]) {
+      params.set("with_date", timeMap[timeFilter]);
+    } else if (timeFilter === "custom" && context?.dateFrom) {
+      params.set("with_date", "c");
+      params.set("date_from", context.dateFrom);
+      if (context.dateTo) params.set("date_to", context.dateTo);
+    }
+
     const doFetch = context?.fetch ?? fetch;
 
     const response = await doFetch(`${BASE_URL}/sp/search?${params.toString()}`, {
@@ -106,7 +130,7 @@ export default class StartpageEngine {
         "User-Agent": _getRandomUserAgent(),
         Accept:
           "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Language": context?.buildAcceptLanguage?.() ?? "en,en-US;q=0.9",
         "Accept-Encoding": "gzip, deflate, br",
         "Sec-Fetch-Dest": "document",
         "Sec-Fetch-Mode": "navigate",

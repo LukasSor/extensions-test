@@ -159,6 +159,14 @@ export default {
       placeholder: "Enter your Jellyfin API key",
       description: "Found in Jellyfin Dashboard → API Keys",
     },
+    {
+      key: "headerName",
+      label: "Auth Header",
+      type: "text",
+      default: "X-Emby-Token",
+      placeholder: "X-Emby-Token",
+      description: "HTTP header used to authenticate image proxy requests. Change only if your server requires a different header.",
+    },
   ],
 
   init(ctx) {

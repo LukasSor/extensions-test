@@ -12,10 +12,20 @@ export default class InternetArchiveEngine {
   name = "Internet Archive";
   bangShortcut = "ia";
 
-  async executeSearch(query, page = 1, _timeFilter, context) {
+  async executeSearch(query, page = 1, timeFilter, context) {
     const rows = 20;
+    let q = query;
+    if (timeFilter === "hour") q += " AND date:[NOW-1HOUR TO NOW]";
+    else if (timeFilter === "day") q += " AND date:[NOW-1DAY TO NOW]";
+    else if (timeFilter === "week") q += " AND date:[NOW-7DAYS TO NOW]";
+    else if (timeFilter === "month") q += " AND date:[NOW-1MONTH TO NOW]";
+    else if (timeFilter === "year") q += " AND date:[NOW-1YEAR TO NOW]";
+    else if (timeFilter === "custom" && context?.dateFrom) {
+      const to = context.dateTo ?? "NOW";
+      q += ` AND date:[${context.dateFrom} TO ${to}]`;
+    }
     const params = new URLSearchParams({
-      q: query,
+      q,
       output: "json",
       rows: String(rows),
       page: String(page),

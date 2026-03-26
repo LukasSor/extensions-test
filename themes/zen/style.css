@@ -308,9 +308,6 @@ a:hover {
   border-style: solid;
 }
 
-.lucky-slot, .lucky-alt {
-  display: none !important;
-}
 
 .lucky-slot-inner span {
   font-family: var(--font-family);
