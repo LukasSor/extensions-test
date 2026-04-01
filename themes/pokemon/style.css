@@ -368,13 +368,13 @@ body::after {
   background-image: url("https://play.pokemonshowdown.com/sprites/ani/squirtle.gif");
 }
 
-.header,
-.results-header {
+#header,
+#results-header {
   background: transparent ;
   border-bottom: none ;
 }
 
-.logo-container .logo,
+#home-logo .logo,
 .results-logo {
   font-weight: 700 ;
   letter-spacing: -0.02em ;
@@ -383,7 +383,7 @@ body::after {
   filter: none ;
 }
 
-.logo-container .logo span,
+#home-logo .logo span,
 .results-logo span {
   color: inherit ;
 }

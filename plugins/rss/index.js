@@ -158,7 +158,7 @@ const _parseRssOrAtomInner = (xml, feedUrl) => {
   return { items: items.slice(0, MAX_ITEMS_PER_FEED), feedTitle };
 }
 
-const _fetchFeed = async (url) => {
+const _fetchFeed = async (url, fetchFn = fetch) => {
   const cached = CACHE.get(url);
   if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
     return { items: cached.items, feedTitle: cached.feedTitle };
@@ -166,7 +166,7 @@ const _fetchFeed = async (url) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FEED_TIMEOUT_MS);
   try {
-    const res = await fetch(url, {
+    const res = await fetchFn(url, {
       signal: controller.signal,
       headers: {
         "User-Agent":
@@ -202,12 +202,12 @@ const _fetchFeed = async (url) => {
   }
 };
 
-const _fetchAllFeeds = async (urls) => {
+const _fetchAllFeeds = async (urls, fetchFn = fetch) => {
   const capped = urls.slice(0, MAX_FEEDS_PER_REQUEST);
   const bySource = new Map();
   for (let i = 0; i < capped.length; i += CONCURRENCY) {
     const batch = capped.slice(i, i + CONCURRENCY);
-    const results = await Promise.all(batch.map((u) => _fetchFeed(u)));
+    const results = await Promise.all(batch.map((u) => _fetchFeed(u, fetchFn)));
     for (const r of results) {
       if (!r || r.items.length === 0) continue;
       const key = r.feedTitle || capped[i];
@@ -245,10 +245,10 @@ const _getActiveUrls = () => {
   return feedUrls.length > 0 ? feedUrls : [...DEFAULT_NEWS_FEED_URLS];
 };
 
-const _searchFeeds = async (query, page) => {
+const _searchFeeds = async (query, page, fetchFn = fetch) => {
   const urls = _getActiveUrls();
   if (urls.length === 0) return [];
-  const allItems = await _fetchAllFeeds(urls);
+  const allItems = await _fetchAllFeeds(urls, fetchFn);
   const q = query.trim().toLowerCase();
   const filtered =
     q === ""
@@ -406,12 +406,13 @@ const slot = {
   },
 
   async execute(args, context) {
+    const fetchFn = context?.fetch || fetch;
     const page = context?.page ?? 1;
     const query = args.trim();
-    const items = await _searchFeeds(query, page);
+    const items = await _searchFeeds(query, page, fetchFn);
     const totalItems = await (async () => {
       const urls = _getActiveUrls();
-      const allItems = await _fetchAllFeeds(urls);
+      const allItems = await _fetchAllFeeds(urls, fetchFn);
       const q = query.toLowerCase();
       return q
         ? allItems.filter(

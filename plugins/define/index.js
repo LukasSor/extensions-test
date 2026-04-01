@@ -23,7 +23,8 @@ export default {
 
   settingsSchema: [],
 
-  async execute(args) {
+  async execute(args, context) {
+    const fetchFn = context?.fetch || fetch;
     const word = _extractWord(args);
     if (!word) {
       return {
@@ -32,7 +33,7 @@ export default {
       };
     }
     try {
-      const res = await fetch(`${API_BASE}/${encodeURIComponent(word)}`);
+      const res = await fetchFn(`${API_BASE}/${encodeURIComponent(word)}`);
       if (!res.ok) {
         if (res.status === 404) {
           return {

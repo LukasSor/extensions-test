@@ -99,24 +99,24 @@ const _getHeaders = () => {
   return headers;
 };
 
-const _fetchRepo = async (owner, repo) => {
+const _fetchRepo = async (owner, repo, fetchFn = fetch) => {
   const key = `repo:${String(owner).toLowerCase()}/${String(repo).toLowerCase()}`;
   const cached = _cacheGet(key);
   if (cached != null) return cached;
   const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
-  const res = await fetch(url, { headers: _getHeaders() });
+  const res = await fetchFn(url, { headers: _getHeaders() });
   if (!res.ok) return null;
   const data = await res.json();
   _cacheSet(key, data);
   return data;
 };
 
-const _fetchUser = async (login) => {
+const _fetchUser = async (login, fetchFn = fetch) => {
   const key = `user:${String(login).toLowerCase()}`;
   const cached = _cacheGet(key);
   if (cached != null) return cached;
   const url = `https://api.github.com/users/${encodeURIComponent(login)}`;
-  const res = await fetch(url, { headers: _getHeaders() });
+  const res = await fetchFn(url, { headers: _getHeaders() });
   if (!res.ok) return null;
   const data = await res.json();
   _cacheSet(key, data);
@@ -182,6 +182,7 @@ export const slot = {
   },
 
   async execute(_query, context) {
+    const fetchFn = context?.fetch || fetch;
     const results = context?.results ?? [];
     const { repos, users } = _parseGitHubUrls(results);
     if (repos.length === 0 && users.length === 0) return { title: "", html: "" };
@@ -190,7 +191,7 @@ export const slot = {
     const userCards = [];
 
     for (const { owner, repo } of repos) {
-      const data = await _fetchRepo(owner, repo);
+      const data = await _fetchRepo(owner, repo, fetchFn);
       if (!data) continue;
       const fullName = _esc(data.full_name || `${owner}/${repo}`);
       const desc = _esc((data.description || "").slice(0, 160));
@@ -217,7 +218,7 @@ export const slot = {
     }
 
     for (const login of users) {
-      const data = await _fetchUser(login);
+      const data = await _fetchUser(login, fetchFn);
       if (!data) continue;
       const name = _esc(data.name || data.login);
       const bio = _esc((data.bio || "").slice(0, 120));

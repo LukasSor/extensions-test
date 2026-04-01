@@ -80,11 +80,11 @@ const _render = (data) => {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => data[key] ?? "");
 };  
 
-const _tmdb = async (key, path) => {
+const _tmdb = async (key, path, fetchFn = fetch) => {
   const base = "https://api.themoviedb.org/3";
   const sep = path.includes("?") ? "&" : "?";
   const full = `${base}/${path}${sep}api_key=${encodeURIComponent(key)}&language=en-US`;
-  const res = await fetch(full);
+  const res = await fetchFn(full);
 
   if (!res.ok) return null;
 
@@ -255,9 +255,10 @@ export const slot = {
     return true;
   },
 
-  async execute(query) {
+  async execute(query, context) {
     if (!apiKey) return { title: "", html: "" };
 
+    const fetchFn = context?.fetch || fetch;
     const { intent, term } = _parseQuery(query);
     if (!term) return { title: "", html: "" };
 
@@ -265,7 +266,7 @@ export const slot = {
     const mediaIntent = _hasMediaIntent(query);
 
     try {
-      const multi = await _tmdb(apiKey, `search/multi?query=${encodeURIComponent(searchTerm)}`);
+      const multi = await _tmdb(apiKey, `search/multi?query=${encodeURIComponent(searchTerm)}`, fetchFn);
       const allResults = multi?.results || [];
 
       if (intent === "cast") {
@@ -274,7 +275,7 @@ export const slot = {
           allResults[0];
         if (!item || !item.id) return { title: "", html: "" };
         const mediaType = item.media_type || "movie";
-        const cred = await _tmdb(apiKey, `${mediaType}/${item.id}/credits`);
+        const cred = await _tmdb(apiKey, `${mediaType}/${item.id}/credits`, fetchFn);
         const cast = cred?.cast || [];
         const title = item.title || item.name || "";
         const year = (item.release_date || item.first_air_date || "").slice(0, 4);
@@ -295,8 +296,8 @@ export const slot = {
       const person = allResults.find((r) => r.media_type === "person");
       if (person && person.id && _isConfidentMatch(searchTerm, person, mediaIntent)) {
         const [movieCredits, tvCredits] = await Promise.all([
-          _tmdb(apiKey, `person/${person.id}/movie_credits`),
-          _tmdb(apiKey, `person/${person.id}/tv_credits`),
+          _tmdb(apiKey, `person/${person.id}/movie_credits`, fetchFn),
+          _tmdb(apiKey, `person/${person.id}/tv_credits`, fetchFn),
         ]);
         const movieCast = movieCredits?.cast || [];
         const tvCast = tvCredits?.cast || [];
@@ -340,8 +341,8 @@ export const slot = {
         unique.map(async (item) => {
           const mediaType = item.media_type || "movie";
           const [details, cred] = await Promise.all([
-            _tmdb(apiKey, `${mediaType}/${item.id}`),
-            _tmdb(apiKey, `${mediaType}/${item.id}/credits`),
+            _tmdb(apiKey, `${mediaType}/${item.id}`, fetchFn),
+            _tmdb(apiKey, `${mediaType}/${item.id}/credits`, fetchFn),
           ]);
           return { item, details, cast: cred?.cast || [], mediaType };
         }),

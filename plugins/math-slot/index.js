@@ -52,18 +52,19 @@ export const slot = {
     return HAS_DIGIT.test(q) && MATH_PATTERN.test(q);
   },
 
-  async execute(query) {
+  async execute(query, context) {
+    const fetchFn = context?.fetch || fetch;
     const originalQuery = query.trim();
     let safeQuery = originalQuery.toLowerCase();
-    
+
     safeQuery = safeQuery.replace(/\[/g, "(").replace(/\]/g, ")");
     safeQuery = safeQuery.replace(/\{/g, "(").replace(/\}/g, ")");
     safeQuery = safeQuery.replace(/root\(/g, "sqrt(");
 
     const q = encodeURIComponent(safeQuery);
-    
+
     try {
-      const res = await fetch(`https://api.mathjs.org/v4/?expr=${q}`);
+      const res = await fetchFn(`https://api.mathjs.org/v4/?expr=${q}`);
       if (!res.ok) return { html: "" };
       
       let result = await res.text();

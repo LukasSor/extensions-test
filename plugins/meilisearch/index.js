@@ -19,11 +19,11 @@ const PER_PAGE = 20;
 const MEILISEARCH_LOGO =
   "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@refs/heads/main/svg/meilisearch.svg";
 
-async function searchIndex(meiliUrlVal, apiKeyVal, index, query, offset) {
+async function searchIndex(meiliUrlVal, apiKeyVal, index, query, offset, fetchFn = fetch) {
   const headers = { "Content-Type": "application/json" };
   if (apiKeyVal) headers["Authorization"] = `Bearer ${apiKeyVal}`;
   const cropFields = [contentField, "description", "summary", "body", "text"];
-  const res = await fetch(`${meiliUrlVal}/indexes/${index}/search`, {
+  const res = await fetchFn(`${meiliUrlVal}/indexes/${index}/search`, {
     method: "POST",
     headers,
     body: JSON.stringify({
@@ -126,6 +126,7 @@ export default {
   },
 
   async execute(args, context) {
+    const fetchFn = context?.fetch || fetch;
     if (!meiliUrl || indexes.length === 0) {
       return {
         title: "Meilisearch",
@@ -146,7 +147,7 @@ export default {
       const offset = (page - 1) * PER_PAGE;
 
       const settled = await Promise.allSettled(
-        indexes.map((idx) => searchIndex(meiliUrl, apiKey, idx, term, offset)),
+        indexes.map((idx) => searchIndex(meiliUrl, apiKey, idx, term, offset, fetchFn)),
       );
 
       const allHits = [];

@@ -5,7 +5,12 @@
   "version": "1.0.0",
   "css": "style.css",
   "html": {
-    "index": "index.html",
-    "search": "search.html"
+    "layout": "layout.html"
+  },
+  "templates": {
+    "home-logo": "templates/home-logo.html",
+    "home-search": "templates/home-search.html",
+    "home-footer": "templates/home-footer.html",
+    "search-header": "templates/search-header.html"
   }
 }

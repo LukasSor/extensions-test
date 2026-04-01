@@ -95,10 +95,10 @@ function renderItem(item) {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => data[key] ?? "");
 }
 
-async function findEpisode(epQuery, authHeaders, itemFields, limit, startIndex) {
+async function findEpisode(epQuery, authHeaders, itemFields, limit, startIndex, fetchFn = fetch) {
   const seriesVariants = searchVariants(epQuery.series);
   const seriesFetches = seriesVariants.map((v) =>
-    fetch(
+    fetchFn(
       `${jellyfinUrl}/Items?SearchTerm=${encodeURIComponent(v)}&Recursive=true&Limit=10&Fields=ImageTags&IncludeItemTypes=Series`,
       { headers: authHeaders },
     ).then((r) => r.json()),
@@ -119,7 +119,7 @@ async function findEpisode(epQuery, authHeaders, itemFields, limit, startIndex) 
   const episodeFetches = allSeries.map((s) => {
     let url = `${jellyfinUrl}/Shows/${s.Id}/Episodes?Fields=${itemFields}&Limit=${limit}&StartIndex=${startIndex}`;
     if (epQuery.season != null) url += `&Season=${epQuery.season}`;
-    return fetch(url, { headers: authHeaders }).then((r) => r.json());
+    return fetchFn(url, { headers: authHeaders }).then((r) => r.json());
   });
   const episodeResults = await Promise.all(episodeFetches);
 
@@ -183,6 +183,7 @@ export default {
   },
 
   async execute(args, context) {
+    const fetchFn = context?.fetch || fetch;
     if (!jellyfinUrl || !apiKey) {
       return {
         title: "Jellyfin Search",
@@ -211,7 +212,7 @@ export default {
 
       const epQuery = parseEpisodeQuery(term);
       if (epQuery) {
-        const epResults = await findEpisode(epQuery, authHeaders, itemFields, perPage, startIndex);
+        const epResults = await findEpisode(epQuery, authHeaders, itemFields, perPage, startIndex, fetchFn);
         if (epResults.length > 0) {
           const results = epResults.map((item) => renderItem(item)).join("");
           return {
@@ -226,20 +227,20 @@ export default {
       for (const v of variants) {
         const enc = encodeURIComponent(v);
         fetches.push(
-          fetch(
+          fetchFn(
             `${jellyfinUrl}/Items?SearchTerm=${enc}&Recursive=true&Limit=${perPage}&StartIndex=${startIndex}&Fields=${itemFields}&IncludeItemTypes=${itemTypes}`,
             { headers: authHeaders },
           ).then((r) => r.json()),
         );
         fetches.push(
-          fetch(
+          fetchFn(
             `${jellyfinUrl}/Search/Hints?searchTerm=${enc}&Limit=${perPage}&StartIndex=${startIndex}&IncludeItemTypes=${itemTypes}`,
             { headers: authHeaders },
           ).then((r) => r.json()),
         );
       }
       fetches.push(
-        fetch(
+        fetchFn(
           `${jellyfinUrl}/Persons?searchTerm=${encodeURIComponent(term)}&Limit=5&Fields=Overview,PrimaryImageAspectRatio`,
           { headers: authHeaders },
         ).then((r) => r.json()),
@@ -259,7 +260,7 @@ export default {
 
       let personItems = [];
       if (personIds.length > 0) {
-        const personItemsRes = await fetch(
+        const personItemsRes = await fetchFn(
           `${jellyfinUrl}/Items?PersonIds=${personIds.join(",")}&Recursive=true&Limit=30&Fields=${itemFields}&IncludeItemTypes=Movie,Series`,
           { headers: authHeaders },
         );

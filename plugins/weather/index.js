@@ -87,7 +87,8 @@ export default {
     return true;
   },
 
-  async execute(args) {
+  async execute(args, context) {
+    const fetchFn = context?.fetch || fetch;
     const query = args.trim() || defaultCity;
 
     if (!query) {
@@ -101,7 +102,7 @@ export default {
     }
 
     try {
-      const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`);
+      const geoRes = await fetchFn(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`);
       if (!geoRes.ok) throw new Error(`Geocoding HTTP ${geoRes.status}`);
       const geoData = await geoRes.json();
 
@@ -118,7 +119,7 @@ export default {
       const tempUnit = useFahrenheit ? "fahrenheit" : "celsius";
       const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${location.latitude}&longitude=${location.longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,surface_pressure,cloud_cover,visibility&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_sum,precipitation_probability_max,uv_index_max,wind_speed_10m_max&hourly=temperature_2m,weather_code,precipitation_probability,precipitation&temperature_unit=${tempUnit}&timezone=auto&forecast_days=7`;
 
-      const weatherRes = await fetch(weatherUrl);
+      const weatherRes = await fetchFn(weatherUrl);
       if (!weatherRes.ok) throw new Error(`Weather HTTP ${weatherRes.status}`);
       const weatherData = await weatherRes.json();
 
