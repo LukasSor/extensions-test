@@ -78,7 +78,7 @@
         "path": "plugins/rss",
         "name": "Home RSS Feeds",
         "description": "Shows RSS feed items above search results.",
-        "version": "1.4.1",
+        "version": "1.4.2",
         "type": "slot"
       },
       {

@@ -7,7 +7,7 @@
   margin: 0 6px;
 }
 
-.main.has-feed {
+#main-home.has-feed {
   justify-content: flex-start;
   margin-top: 0;
   padding-top: 80px;
