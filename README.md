@@ -112,6 +112,17 @@ Classic Snake command: `!snake` / `!snake-game` or natural language; field size,
 
 </details>
 
+### Coin flip
+
+3D coin flip: `!coinflip` / `!flip` with spin animation and spin-again in the card.
+
+<details>
+<summary>Screenshot</summary>
+
+![Coin flip](plugins/coinflip/screenshots/1.png)
+
+</details>
+
 ### Random number
 
 Random number generator: `!random` / `!rng` with min/max, optional decimals and decimal places.
