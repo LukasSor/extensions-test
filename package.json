@@ -63,16 +63,9 @@
       {
         "path": "plugins/snake-slot",
         "name": "Snake",
-        "description": "Snake mini-game slot: enable “Natural language” to match plain searches like “snake”, or use !snake from the companion command plugin.",
-        "version": "1.1.0",
+        "description": "Snake mini-game: !snake / !snake-game (RSS-style slot). Optional plain-search phrases when enabled in settings.",
+        "version": "1.2.0",
         "type": "slot"
-      },
-      {
-        "path": "plugins/snake-slot",
-        "name": "Snake (!snake)",
-        "description": "Run !snake to open the Snake game. Defaults and optional plain-search matching are under Plugins → Snake.",
-        "version": "1.1.0",
-        "type": "command"
       },
       {
         "path": "plugins/jellyfin",

@@ -15,6 +15,7 @@ const THEME_KEYS = new Set([
   "vulcan",
   "chess",
   "synthwave",
+  "catppuccin",
 ]);
 
 const _matchesSnakeQuery = (raw) => {
@@ -23,6 +24,12 @@ const _matchesSnakeQuery = (raw) => {
   if (/^\s*(play\s+)?snake(\s+game)?\s*$/i.test(q)) return true;
   if (/^\s*google\s+snake\s*$/i.test(q)) return true;
   return false;
+};
+
+const _fromBang = (qRaw, context) => {
+  if (qRaw.startsWith("!")) return true;
+  const b = String(context?.bang || "").toLowerCase();
+  return b === "snake" || b === "snake-game";
 };
 
 const _normalizeSettings = (settings) => {
@@ -74,21 +81,21 @@ const SETTINGS_SCHEMA = [
     key: "enabled",
     label: "Enabled",
     type: "toggle",
-    description: "Turn off to disable Snake entirely (!snake and the slot).",
+    description: "Turn off to disable Snake entirely.",
   },
   {
     key: "naturalLanguage",
     label: "Natural language in search",
     type: "toggle",
     description:
-      "When on, plain searches like “snake” open the game above results. When off, use the !snake command only.",
+      "When on, plain searches like “snake” open the game. When off, use !snake or !snake-game only (same pattern as other command-style plugins).",
   },
   {
     key: "defaultField",
     label: "Default field size",
     type: "select",
     options: ["small", "medium", "large"],
-    description: "Initial grid size (change in the game panel before Play).",
+    description: "Initial grid size (change before Play).",
   },
   {
     key: "defaultSpeed",
@@ -108,8 +115,9 @@ const SETTINGS_SCHEMA = [
       "vulcan",
       "chess",
       "synthwave",
+      "catppuccin",
     ],
-    description: "Colors for grid, snake, and food.",
+    description: "Board and snake colors (Catppuccin ≈ Mocha tones).",
   },
   {
     key: "foodOnField",
@@ -125,8 +133,17 @@ export const slot = {
   id: "snake-slot",
   name: "Snake",
   description:
-    "Snake mini-game: optional plain-search trigger, or run !snake. Field size, speed, themes, multi-food.",
+    "Snake mini-game: !snake / !snake-game, optional plain-search phrase. Field size, speed, themes, multi-food.",
   position: "at-a-glance",
+
+  trigger: "snake",
+  aliases: ["snake-game"],
+  naturalLanguagePhrases: [
+    "snake",
+    "play snake",
+    "snake game",
+    "google snake",
+  ],
 
   settingsSchema: SETTINGS_SCHEMA,
 
@@ -136,45 +153,35 @@ export const slot = {
     _applyConfigure(settings || {});
   },
 
-  trigger(query) {
-    if (!snakeEnabled || !naturalLanguageEnabled) return false;
-    return _matchesSnakeQuery(query);
-  },
-
-  async execute() {
+  async execute(args, context) {
     if (!snakeEnabled) {
       return {
         title: "Snake",
         html: `<div class="snake-slot snake-slot--disabled"><p class="snake-disabled-msg">Snake is disabled in plugin settings.</p></div>`,
       };
     }
-    return { title: "Snake", html: _buildHtml() };
-  },
-};
 
-export const command = {
-  name: "Snake",
-  description: "Open the Snake game (!snake). Configure defaults under Plugins → Snake (slot).",
-  trigger: "snake",
-  aliases: ["snake-game"],
+    const qRaw = String(
+      args ?? context?.query ?? context?.q ?? "",
+    ).trim();
+    const bang = _fromBang(qRaw, context);
 
-  settingsSchema: SETTINGS_SCHEMA,
-
-  init: _initTemplate,
-
-  configure(settings) {
-    _applyConfigure(settings || {});
-  },
-
-  async execute() {
-    if (!snakeEnabled) {
-      return {
-        title: "Snake",
-        html: `<div class="command-result"><p>Snake is disabled in plugin settings.</p></div>`,
-      };
+    if (!naturalLanguageEnabled) {
+      if (!bang && _matchesSnakeQuery(qRaw)) {
+        const only = qRaw.trim().toLowerCase();
+        if (only !== "snake" && only !== "snake-game") {
+          return { title: "", html: "" };
+        }
+      }
+      if (!bang && qRaw !== "" && !_matchesSnakeQuery(qRaw)) {
+        return { title: "", html: "" };
+      }
+    } else if (!bang && qRaw !== "" && !_matchesSnakeQuery(qRaw)) {
+      return { title: "", html: "" };
     }
+
     return { title: "Snake", html: _buildHtml() };
   },
 };
 
-export default { slot, command };
+export default { slot };

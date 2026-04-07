@@ -1,64 +1,64 @@
 <div class="snake-slot" data-snake-config="{{config}}">
-  <div class="snake-card">
-    <header class="snake-top">
-      <div class="snake-brand">
-        <h3 class="snake-title">Snake</h3>
-        <p class="snake-hint">Arrow keys · click the board to focus</p>
+  <div class="snake-above">
+    <div class="snake-panel snake-panel-settings" data-snake-panel="settings">
+      <p class="snake-lead">Arrow keys or WASD · click the board to focus</p>
+      <div class="snake-settings-grid">
+        <label class="snake-control">
+          <span class="snake-control-label">Field</span>
+          <select class="snake-select snake-select-field" aria-label="Field size">
+            <option value="small">Small</option>
+            <option value="medium">Medium</option>
+            <option value="large">Large</option>
+          </select>
+        </label>
+        <label class="snake-control">
+          <span class="snake-control-label">Speed</span>
+          <select class="snake-select snake-select-speed" aria-label="Speed">
+            <option value="turtle">Turtle</option>
+            <option value="rabbit">Rabbit</option>
+            <option value="snake">Snake</option>
+          </select>
+        </label>
+        <label class="snake-control snake-control-span2">
+          <span class="snake-control-label">Theme</span>
+          <select class="snake-select snake-select-theme" aria-label="Theme">
+            <option value="normal">Normal (green)</option>
+            <option value="dark">Dark</option>
+            <option value="frozen">Frozen (blue)</option>
+            <option value="vulcan">Vulcan (red / brown)</option>
+            <option value="chess">Chess (white / black)</option>
+            <option value="synthwave">Synthwave</option>
+            <option value="catppuccin">Catppuccin (Mocha)</option>
+          </select>
+        </label>
+        <label class="snake-control">
+          <span class="snake-control-label">Food on field</span>
+          <select class="snake-select snake-select-food" aria-label="Food pellets">
+            <option value="1">1</option>
+            <option value="3">3</option>
+            <option value="5">5</option>
+          </select>
+        </label>
       </div>
-      <div class="snake-score" aria-live="polite">0</div>
-    </header>
-
-    <div class="snake-board-wrap">
-      <canvas class="snake-canvas" width="400" height="400" aria-label="Snake game board"></canvas>
+      <button type="button" class="snake-btn snake-btn-primary snake-start">Start</button>
     </div>
 
-    <div class="snake-controls">
-      <div class="snake-actions">
-        <button type="button" class="snake-btn snake-btn-primary snake-play">Start</button>
-        <button type="button" class="snake-btn snake-btn-secondary snake-settings-toggle" aria-expanded="true" aria-controls="snake-settings-region">Settings</button>
+    <div class="snake-panel snake-panel-death" data-snake-panel="death" hidden>
+      <p class="snake-death-title">Game over</p>
+      <p class="snake-death-msg" aria-live="polite"></p>
+      <div class="snake-death-actions">
+        <button type="button" class="snake-btn snake-btn-primary snake-death-restart">Restart</button>
+        <button type="button" class="snake-btn snake-btn-secondary snake-death-settings">Settings</button>
       </div>
-
-      <div id="snake-settings-region" class="snake-settings" data-snake-settings>
-        <div class="snake-settings-grid">
-          <label class="snake-control">
-            <span class="snake-control-label">Field</span>
-            <select class="snake-select snake-select-field" aria-label="Field size">
-              <option value="small">Small</option>
-              <option value="medium">Medium</option>
-              <option value="large">Large</option>
-            </select>
-          </label>
-          <label class="snake-control">
-            <span class="snake-control-label">Speed</span>
-            <select class="snake-select snake-select-speed" aria-label="Speed">
-              <option value="turtle">Turtle</option>
-              <option value="rabbit">Rabbit</option>
-              <option value="snake">Snake</option>
-            </select>
-          </label>
-          <label class="snake-control snake-control-span2">
-            <span class="snake-control-label">Theme</span>
-            <select class="snake-select snake-select-theme" aria-label="Theme">
-              <option value="normal">Normal (green)</option>
-              <option value="dark">Dark</option>
-              <option value="frozen">Frozen (blue)</option>
-              <option value="vulcan">Vulcan (red / brown)</option>
-              <option value="chess">Chess (white / black)</option>
-              <option value="synthwave">Synthwave</option>
-            </select>
-          </label>
-          <label class="snake-control">
-            <span class="snake-control-label">Food on field</span>
-            <select class="snake-select snake-select-food" aria-label="Food pellets">
-              <option value="1">1</option>
-              <option value="3">3</option>
-              <option value="5">5</option>
-            </select>
-          </label>
-        </div>
-      </div>
-
-      <p class="snake-status" aria-live="polite"></p>
     </div>
+  </div>
+
+  <div class="snake-score-row">
+    <span class="snake-score-label">Score</span>
+    <span class="snake-score" aria-live="polite">0</span>
+  </div>
+
+  <div class="snake-board-wrap">
+    <canvas class="snake-canvas" width="400" height="400" aria-label="Snake game board"></canvas>
   </div>
 </div>

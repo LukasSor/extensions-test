@@ -4,52 +4,81 @@
 
   const THEMES = {
     normal: {
-      bg: "#14532d",
-      grid: "#166534",
+      boardA: "#157f4c",
+      boardB: "#136b41",
       snake: "#bbf7d0",
-      head: "#f0fdf4",
+      head: "#86efac",
       food: "#facc15",
       chess: false,
+      eyeWhite: "#ffffff",
+      eyePupil: "#1e3a8a",
+      nostril: "#172554",
     },
     dark: {
-      bg: "#18181b",
-      grid: "#27272a",
+      boardA: "#1f1f23",
+      boardB: "#2a2a30",
       snake: "#6ee7b7",
-      head: "#d1fae5",
+      head: "#34d399",
       food: "#fb7185",
       chess: false,
+      eyeWhite: "#f4f4f5",
+      eyePupil: "#3b82f6",
+      nostril: "#1d4ed8",
     },
     frozen: {
-      bg: "#0c4a6e",
-      grid: "#075985",
+      boardA: "#0e5f8a",
+      boardB: "#0c4a6e",
       snake: "#7dd3fc",
-      head: "#f0f9ff",
-      food: "#bae6fd",
+      head: "#38bdf8",
+      food: "#e0f2fe",
       chess: false,
+      eyeWhite: "#f8fafc",
+      eyePupil: "#1d4ed8",
+      nostril: "#1e3a8a",
     },
     vulcan: {
-      bg: "#422006",
-      grid: "#78350f",
+      boardA: "#5c2e16",
+      boardB: "#4a250f",
       snake: "#fdba74",
-      head: "#ffedd5",
-      food: "#dc2626",
+      head: "#fb923c",
+      food: "#fca5a5",
       chess: false,
+      eyeWhite: "#fff7ed",
+      eyePupil: "#7c2d12",
+      nostril: "#431407",
     },
     chess: {
-      bg: "#404040",
-      grid: "#525252",
-      snake: "#22c55e",
-      head: "#86efac",
-      food: "#ef4444",
+      boardA: "#fafafa",
+      boardB: "#171717",
+      snake: "#15803d",
+      head: "#22c55e",
+      food: "#dc2626",
       chess: true,
+      eyeWhite: "#ffffff",
+      eyePupil: "#1e40af",
+      nostril: "#1e3a8a",
     },
     synthwave: {
-      bg: "#2d1b4e",
-      grid: "#4c1d95",
+      boardA: "#3d2a5c",
+      boardB: "#2f1f4a",
       snake: "#f472b6",
-      head: "#fce7f3",
+      head: "#e879f9",
       food: "#38bdf8",
       chess: false,
+      eyeWhite: "#fdf4ff",
+      eyePupil: "#7c3aed",
+      nostril: "#5b21b6",
+    },
+    catppuccin: {
+      boardA: "#242438",
+      boardB: "#1e1e2e",
+      snake: "#a6e3a1",
+      head: "#94e2d5",
+      food: "#fab387",
+      chess: false,
+      eyeWhite: "#dce0e8",
+      eyePupil: "#89b4fa",
+      nostril: "#45475a",
     },
   };
 
@@ -65,22 +94,106 @@
 
   const _key = (x, y) => x + "," + y;
 
+  function _drawHeadFace(ctx, seg, cell, dir, th) {
+    const px = seg.x * cell;
+    const py = seg.y * cell;
+    const s = cell;
+    const ew = Math.max(2, Math.round(s * 0.22));
+    const eh = Math.max(2, Math.round(s * 0.2));
+    const pup = Math.max(1, Math.round(ew * 0.45));
+    const inset = Math.max(0, Math.floor(s * 0.08));
+    const margin = Math.max(1, Math.round(s * 0.05));
+
+    const hx0 = px + inset;
+    const hy0 = py + inset;
+    const hx1 = px + s - inset;
+    const hy1 = py + s - inset;
+
+    let ex1, ey1, ex2, ey2;
+    let pdx, pdy;
+    if (dir.x === 1) {
+      ex1 = hx1 - ew - Math.round(s * 0.06);
+      ey1 = hy0 + Math.round(s * 0.16);
+      ex2 = ex1;
+      ey2 = hy0 + Math.round(s * 0.64) - eh;
+      pdx = 1;
+      pdy = 0;
+    } else if (dir.x === -1) {
+      ex1 = hx0 + Math.round(s * 0.06);
+      ey1 = hy0 + Math.round(s * 0.16);
+      ex2 = ex1;
+      ey2 = hy0 + Math.round(s * 0.64) - eh;
+      pdx = -1;
+      pdy = 0;
+    } else if (dir.y === -1) {
+      ey1 = hy0 + Math.round(s * 0.06);
+      ex1 = hx0 + Math.round(s * 0.18);
+      ey2 = ey1;
+      ex2 = hx0 + Math.round(s * 0.64) - ew;
+      pdx = 0;
+      pdy = -1;
+    } else {
+      ey1 = hy1 - eh - Math.round(s * 0.06);
+      ex1 = hx0 + Math.round(s * 0.18);
+      ey2 = ey1;
+      ex2 = hx0 + Math.round(s * 0.64) - ew;
+      pdx = 0;
+      pdy = 1;
+    }
+
+    const drawPupil = (wx, wy) => {
+      let px0 = wx + Math.round((ew - pup) / 2);
+      let py0 = wy + Math.round((eh - pup) / 2);
+      if (pdx === 1) px0 = wx + ew - pup - margin;
+      if (pdx === -1) px0 = wx + margin;
+      if (pdy === 1) py0 = wy + eh - pup - margin;
+      if (pdy === -1) py0 = wy + margin;
+      ctx.fillRect(px0, py0, pup, pup);
+    };
+
+    ctx.fillStyle = th.eyeWhite;
+    ctx.fillRect(ex1, ey1, ew, eh);
+    ctx.fillRect(ex2, ey2, ew, eh);
+
+    ctx.fillStyle = th.eyePupil;
+    drawPupil(ex1, ey1);
+    drawPupil(ex2, ey2);
+
+    const nz = Math.max(1, Math.round(s * 0.06));
+    ctx.fillStyle = th.nostril;
+    if (dir.x === 1) {
+      ctx.fillRect(hx1 - nz - 1, ey1 + Math.round(eh / 2) - 1, nz, nz);
+      ctx.fillRect(hx1 - nz - 1, ey2 + Math.round(eh / 2) - 1, nz, nz);
+    } else if (dir.x === -1) {
+      ctx.fillRect(hx0 + 1, ey1 + Math.round(eh / 2) - 1, nz, nz);
+      ctx.fillRect(hx0 + 1, ey2 + Math.round(eh / 2) - 1, nz, nz);
+    } else if (dir.y === -1) {
+      ctx.fillRect(ex1 + Math.round(ew / 2) - 1, hy0 + 1, nz, nz);
+      ctx.fillRect(ex2 + Math.round(ew / 2) - 1, hy0 + 1, nz, nz);
+    } else {
+      ctx.fillRect(ex1 + Math.round(ew / 2) - 1, hy1 - nz - 1, nz, nz);
+      ctx.fillRect(ex2 + Math.round(ew / 2) - 1, hy1 - nz - 1, nz, nz);
+    }
+  }
+
   function boot(root) {
     if (root.dataset.snakeBooted === "1") return;
     root.dataset.snakeBooted = "1";
 
     const canvas = root.querySelector(".snake-canvas");
-    const btnPlay = root.querySelector(".snake-play");
-    const btnSettings = root.querySelector(".snake-settings-toggle");
-    const panel = root.querySelector("[data-snake-settings]");
+    const panelSettings = root.querySelector('[data-snake-panel="settings"]');
+    const panelDeath = root.querySelector('[data-snake-panel="death"]');
+    const btnStart = root.querySelector(".snake-start");
+    const btnDeathRestart = root.querySelector(".snake-death-restart");
+    const btnDeathSettings = root.querySelector(".snake-death-settings");
+    const elDeathMsg = root.querySelector(".snake-death-msg");
     const selField = root.querySelector(".snake-select-field");
     const selSpeed = root.querySelector(".snake-select-speed");
     const selTheme = root.querySelector(".snake-select-theme");
     const selFood = root.querySelector(".snake-select-food");
     const elScore = root.querySelector(".snake-score");
-    const elStatus = root.querySelector(".snake-status");
 
-    if (!canvas || !btnPlay || !panel) return;
+    if (!canvas || !btnStart || !panelSettings || !panelDeath) return;
 
     const cfg = _parseConfig(root);
     if (cfg.field && selField) selField.value = cfg.field;
@@ -95,35 +208,7 @@
     const foods = new Set();
     let score = 0;
     let running = false;
-
     let grid = 18;
-
-    const setSettingsOpen = (open) => {
-      if (open) {
-        panel.setAttribute("data-snake-settings-collapsed", "false");
-        if (btnSettings) {
-          btnSettings.setAttribute("aria-expanded", "true");
-        }
-      } else {
-        panel.setAttribute("data-snake-settings-collapsed", "true");
-        if (btnSettings) {
-          btnSettings.setAttribute("aria-expanded", "false");
-        }
-      }
-    };
-
-    const setPlayingUi = (playing) => {
-      if (playing) {
-        root.classList.add("snake-slot--playing");
-        setSettingsOpen(false);
-        btnPlay.textContent = "Restart";
-        if (btnSettings) btnSettings.disabled = true;
-      } else {
-        root.classList.remove("snake-slot--playing");
-        btnPlay.textContent = "Start";
-        if (btnSettings) btnSettings.disabled = false;
-      }
-    };
 
     const getTheme = () =>
       THEMES[selTheme && selTheme.value] || THEMES.normal;
@@ -137,6 +222,22 @@
       const s = new Set();
       for (const seg of snake) s.add(_key(seg.x, seg.y));
       return s;
+    };
+
+    const setView = (v) => {
+      if (v === "playing") {
+        panelSettings.hidden = true;
+        panelDeath.hidden = true;
+        root.classList.add("snake-slot--playing");
+      } else if (v === "death") {
+        panelSettings.hidden = true;
+        panelDeath.hidden = false;
+        root.classList.remove("snake-slot--playing");
+      } else {
+        panelSettings.hidden = false;
+        panelDeath.hidden = true;
+        root.classList.remove("snake-slot--playing");
+      }
     };
 
     const resizeCanvas = () => {
@@ -165,25 +266,16 @@
       if (!ctx) return;
       const th = getTheme();
       const g = grid;
-      ctx.fillStyle = th.bg;
-      ctx.fillRect(0, 0, g * cell, g * cell);
 
       for (let y = 0; y < g; y++) {
         for (let x = 0; x < g; x++) {
+          const alt = (x + y) % 2 === 0;
           if (th.chess) {
-            ctx.fillStyle =
-              (x + y) % 2 === 0 ? "#f5f5f5" : "#171717";
-            ctx.fillRect(x * cell, y * cell, cell, cell);
+            ctx.fillStyle = alt ? th.boardA : th.boardB;
           } else {
-            ctx.strokeStyle = th.grid;
-            ctx.lineWidth = 1;
-            ctx.strokeRect(
-              x * cell + 0.5,
-              y * cell + 0.5,
-              cell - 1,
-              cell - 1,
-            );
+            ctx.fillStyle = alt ? th.boardA : th.boardB;
           }
+          ctx.fillRect(x * cell, y * cell, cell, cell);
         }
       }
 
@@ -202,9 +294,10 @@
         ctx.fill();
       }
 
+      const headIdx = snake.length - 1;
       for (let i = 0; i < snake.length; i++) {
         const seg = snake[i];
-        const isHead = i === snake.length - 1;
+        const isHead = i === headIdx;
         ctx.fillStyle = isHead ? th.head : th.snake;
         const inset = Math.max(0, Math.floor(cell * 0.08));
         ctx.fillRect(
@@ -213,6 +306,9 @@
           cell - inset * 2,
           cell - inset * 2,
         );
+        if (isHead) {
+          _drawHeadFace(ctx, seg, cell, dir, th);
+        }
       }
     };
 
@@ -252,7 +348,7 @@
       foods.clear();
       score = 0;
       if (elScore) elScore.textContent = "0";
-      if (elStatus) elStatus.textContent = "";
+      if (elDeathMsg) elDeathMsg.textContent = "";
       replenishFood();
       draw();
     };
@@ -263,13 +359,8 @@
         clearInterval(timer);
         timer = null;
       }
-      setPlayingUi(false);
-      setSettingsOpen(true);
-      if (elStatus) {
-        elStatus.textContent =
-          msg ||
-          "Game over — change settings if you like, then Start.";
-      }
+      if (elDeathMsg) elDeathMsg.textContent = msg || "You crashed.";
+      setView("death");
       draw();
     };
 
@@ -317,8 +408,7 @@
       }
       resetGame();
       running = true;
-      setPlayingUi(true);
-      if (elStatus) elStatus.textContent = "Go!";
+      setView("playing");
       canvas.tabIndex = 0;
       canvas.focus();
       const spd =
@@ -326,24 +416,24 @@
       timer = setInterval(tick, spd);
     };
 
-    btnPlay.addEventListener("click", startGame);
+    btnStart.addEventListener("click", startGame);
+    btnDeathRestart.addEventListener("click", startGame);
+    btnDeathSettings.addEventListener("click", () => {
+      setView("settings");
+      draw();
+    });
 
-    if (btnSettings) {
-      btnSettings.addEventListener("click", () => {
-        if (running) return;
-        const collapsed =
-          panel.getAttribute("data-snake-settings-collapsed") === "true";
-        setSettingsOpen(collapsed);
-      });
-    }
+    const _dirFromKey = (key) => {
+      if (key === "ArrowUp" || key === "w" || key === "W") return { x: 0, y: -1 };
+      if (key === "ArrowDown" || key === "s" || key === "S") return { x: 0, y: 1 };
+      if (key === "ArrowLeft" || key === "a" || key === "A") return { x: -1, y: 0 };
+      if (key === "ArrowRight" || key === "d" || key === "D") return { x: 1, y: 0 };
+      return null;
+    };
 
     const onKey = (e) => {
       if (!running) return;
-      let nd = null;
-      if (e.key === "ArrowUp") nd = { x: 0, y: -1 };
-      else if (e.key === "ArrowDown") nd = { x: 0, y: 1 };
-      else if (e.key === "ArrowLeft") nd = { x: -1, y: 0 };
-      else if (e.key === "ArrowRight") nd = { x: 1, y: 0 };
+      const nd = _dirFromKey(e.key);
       if (nd) {
         e.preventDefault();
         pendingDir = nd;
@@ -358,8 +448,7 @@
       draw();
     });
 
-    panel.setAttribute("data-snake-settings-collapsed", "false");
-    if (btnSettings) btnSettings.setAttribute("aria-expanded", "true");
+    setView("settings");
     resetGame();
   }
 
