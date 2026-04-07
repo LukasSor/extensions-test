@@ -6,8 +6,8 @@ let template = "";
 let resultDatesEnabled = true;
 
 export const slot = {
-  id: "result-dates",
-  name: "Result dates",
+  id: "result-date-badges",
+  name: "Result date badges",
   description:
     "Shows an inferred date next to each web result when the snippet, title, URL, or <time> contains a parseable date.",
   position: "at-a-glance",
@@ -39,5 +39,7 @@ export const slot = {
   },
 };
 
-/** Degoog resolves `mod.slot ?? mod.default?.slot` — default must wrap `slot`. */
+/** Named export is enough; default wrapper kept for tooling. */
+export const slotPlugin = slot;
+
 export default { slot };

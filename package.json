@@ -110,10 +110,10 @@
         "type": "slot"
       },
       {
-        "path": "plugins/result-dates",
-        "name": "Result dates",
-        "description": "Date badges on web results: snippet, title, time[datetime], or URL path; all engines. Toggle in plugin settings.",
-        "version": "1.0.1",
+        "path": "plugins/result-date-badges",
+        "name": "Result date badges",
+        "description": "Date badges on web results (snippet, title, time, URL path). New folder name avoids install clash with an old result-dates folder.",
+        "version": "1.0.2",
         "type": "slot"
       },
       {
