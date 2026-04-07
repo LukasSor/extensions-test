@@ -75,6 +75,13 @@
         "type": "command"
       },
       {
+        "path": "plugins/random",
+        "name": "Random number",
+        "description": "RNG card: !random / !rng with min/max, optional decimals and decimal places, comma-formatted fractions.",
+        "version": "1.0.0",
+        "type": "command"
+      },
+      {
         "path": "plugins/jellyfin",
         "name": "Jellyfin",
         "description": "Search your Jellyfin media library.",

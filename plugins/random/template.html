@@ -1,0 +1,60 @@
+<div class="command-result rng-root" data-rng-root>
+  <div class="rng-card">
+    <div class="rng-body">
+      <div class="rng-display" aria-live="polite">
+        <span class="rng-display-value" data-rng-result>—</span>
+      </div>
+      <div class="rng-controls">
+        <label class="rng-field">
+          <span class="rng-label">Min.</span>
+          <input
+            type="number"
+            class="rng-input"
+            data-rng-min
+            value="1"
+            step="any"
+            inputmode="decimal"
+          />
+        </label>
+        <label class="rng-field">
+          <span class="rng-label">Max.</span>
+          <input
+            type="number"
+            class="rng-input"
+            data-rng-max
+            value="10"
+            step="any"
+            inputmode="decimal"
+          />
+        </label>
+        <div class="rng-row rng-row-toggle">
+          <span class="rng-label" id="rng-decimals-label">Decimals</span>
+          <button
+            type="button"
+            class="rng-toggle"
+            data-rng-decimals-toggle
+            role="switch"
+            aria-checked="false"
+            aria-labelledby="rng-decimals-label"
+          >
+            <span class="rng-toggle-knob" aria-hidden="true"></span>
+          </button>
+        </div>
+        <label class="rng-field rng-field-places is-hidden" data-rng-places-wrap>
+          <span class="rng-label">Decimal places</span>
+          <select class="rng-select" data-rng-places aria-label="Decimal places">
+            <option value="1">1</option>
+            <option value="2" selected>2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <button type="button" class="rng-generate" data-rng-generate>
+      Generate
+    </button>
+  </div>
+</div>
