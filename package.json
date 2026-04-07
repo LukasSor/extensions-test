@@ -68,6 +68,13 @@
         "type": "command"
       },
       {
+        "path": "plugins/coinflip",
+        "name": "Coin flip",
+        "description": "3D coin flip card: !coinflip / !flip with spin animation, result under the coin, spin again in place.",
+        "version": "1.0.0",
+        "type": "command"
+      },
+      {
         "path": "plugins/jellyfin",
         "name": "Jellyfin",
         "description": "Search your Jellyfin media library.",

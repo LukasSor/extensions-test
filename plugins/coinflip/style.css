@@ -1,0 +1,347 @@
+.coinflip-root {
+  --cf-gold: #e8c547;
+  --cf-gold-deep: #b8860b;
+  --cf-gold-light: #fff4d4;
+  --cf-ink: #1a1520;
+  --cf-ink-soft: #3d3648;
+  --cf-card: linear-gradient(155deg, #2a2438 0%, #1f1a2e 48%, #171320 100%);
+  --cf-accent: #7c6cf0;
+  --cf-accent-dim: rgba(124, 108, 240, 0.35);
+  --cf-radius: 20px;
+  padding: 0.25rem 0;
+}
+
+.coinflip-card {
+  position: relative;
+  max-width: 320px;
+  margin: 0 auto;
+  padding: 1.35rem 1.5rem 1.5rem;
+  border-radius: var(--cf-radius);
+  background: var(--cf-card);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  overflow: hidden;
+}
+
+.coinflip-card-glow {
+  position: absolute;
+  top: -40%;
+  right: -30%;
+  width: 70%;
+  height: 80%;
+  background: radial-gradient(
+    ellipse,
+    var(--cf-accent-dim) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+.coinflip-header {
+  position: relative;
+  text-align: center;
+  margin-bottom: 1.15rem;
+}
+
+.coinflip-badge {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--cf-gold);
+  opacity: 0.85;
+  letter-spacing: 0.2em;
+  margin-bottom: 0.2rem;
+}
+
+.coinflip-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #f4f0ff;
+}
+
+.coinflip-sub {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  color: rgba(244, 240, 255, 0.55);
+}
+
+.coinflip-scene {
+  position: relative;
+  height: 168px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 900px;
+  margin-bottom: 0.25rem;
+}
+
+.coinflip-shadow {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 112px;
+  height: 18px;
+  background: radial-gradient(
+    ellipse,
+    rgba(0, 0, 0, 0.45) 0%,
+    transparent 72%
+  );
+  border-radius: 50%;
+  transition: transform 0.35s ease, opacity 0.35s ease;
+}
+
+.coinflip-coin-wrap {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  transform-style: preserve-3d;
+  animation: coinflip-float 3.2s ease-in-out infinite;
+}
+
+.coinflip-root.coinflip--spinning .coinflip-coin-wrap {
+  animation: none;
+}
+
+.coinflip-root.coinflip--spinning .coinflip-shadow {
+  transform: translateX(-50%) scale(0.72);
+  opacity: 0.55;
+}
+
+@keyframes coinflip-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.coinflip-coin {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 2.35s cubic-bezier(0.18, 0.72, 0.12, 1);
+  will-change: transform;
+}
+
+.coinflip-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.25) inset,
+    0 8px 20px rgba(0, 0, 0, 0.35);
+}
+
+.coinflip-face-ring {
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2) inset;
+  pointer-events: none;
+}
+
+.coinflip-face-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  z-index: 1;
+}
+
+.coinflip-face--heads {
+  background: radial-gradient(
+    circle at 32% 28%,
+    var(--cf-gold-light) 0%,
+    var(--cf-gold) 38%,
+    var(--cf-gold-deep) 88%
+  );
+  transform: rotateY(0deg);
+  color: var(--cf-ink);
+}
+
+.coinflip-face--tails {
+  background: radial-gradient(
+    circle at 32% 28%,
+    #5a5470 0%,
+    #3d3750 45%,
+    #2a2538 92%
+  );
+  transform: rotateY(180deg);
+  color: #f0ebff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.coinflip-monogram {
+  font-size: 2.35rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.coinflip-number {
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(180deg, #fff 0%, #c4b8e8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+}
+
+.coinflip-face-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  opacity: 0.82;
+}
+
+.coinflip-face--tails .coinflip-face-label {
+  color: rgba(240, 235, 255, 0.65);
+}
+
+.coinflip-result {
+  text-align: center;
+  margin: 0.85rem 0 1rem;
+  min-height: 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+}
+
+.coinflip-result-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: rgba(244, 240, 255, 0.4);
+}
+
+.coinflip-result-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #f4f0ff;
+  letter-spacing: -0.02em;
+}
+
+.coinflip-root.coinflip--spinning .coinflip-result-value {
+  opacity: 0.35;
+}
+
+.coinflip-again {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.72rem 1rem;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(
+    135deg,
+    var(--cf-accent) 0%,
+    #5b4dc4 100%
+  );
+  box-shadow:
+    0 2px 12px rgba(124, 108, 240, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.12) inset;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
+}
+
+.coinflip-again:hover {
+  filter: brightness(1.06);
+  box-shadow:
+    0 4px 18px rgba(124, 108, 240, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.15) inset;
+}
+
+.coinflip-again:active {
+  transform: scale(0.98);
+}
+
+.coinflip-again:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.coinflip-again-icon {
+  font-size: 1.15rem;
+  line-height: 1;
+  display: inline-block;
+  transition: transform 0.5s ease;
+}
+
+.coinflip-root.coinflip--spinning .coinflip-again-icon {
+  transform: rotate(360deg);
+}
+
+[data-theme="light"] .coinflip-card {
+  --cf-card: linear-gradient(155deg, #faf8ff 0%, #f0ecfb 50%, #e8e4f4 100%);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 4px 24px rgba(80, 60, 120, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.9) inset;
+}
+
+[data-theme="light"] .coinflip-title {
+  color: #1f1830;
+}
+
+[data-theme="light"] .coinflip-sub {
+  color: rgba(31, 24, 48, 0.55);
+}
+
+[data-theme="light"] .coinflip-result-label {
+  color: rgba(31, 24, 48, 0.45);
+}
+
+[data-theme="light"] .coinflip-result-value {
+  color: #1f1830;
+}
+
+[data-theme="light"] .coinflip-shadow {
+  background: radial-gradient(
+    ellipse,
+    rgba(60, 40, 100, 0.2) 0%,
+    transparent 72%
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coinflip-coin-wrap {
+    animation: none;
+  }
+
+  .coinflip-coin {
+    transition-duration: 0.35s;
+  }
+}
