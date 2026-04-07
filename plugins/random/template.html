@@ -1,12 +1,18 @@
-<div class="command-result rng-root" data-rng-root>
-  <div class="rng-card">
+<div class="command-result imdb-result rng-root" data-rng-root>
+  <div class="plugin-panel rng-panel">
+    <header class="rng-hero">
+      <p class="imdb-meta">Generator</p>
+      <h2 class="imdb-title rng-heading">Random number</h2>
+      <p class="imdb-hero-meta">Inclusive range · optional decimals</p>
+    </header>
+
     <div class="rng-body">
       <div class="rng-display" aria-live="polite">
         <span class="rng-display-value" data-rng-result>—</span>
       </div>
       <div class="rng-controls">
         <label class="rng-field">
-          <span class="rng-label">Min.</span>
+          <span class="imdb-grid-label rng-label">Min.</span>
           <input
             type="number"
             class="rng-input"
@@ -17,7 +23,7 @@
           />
         </label>
         <label class="rng-field">
-          <span class="rng-label">Max.</span>
+          <span class="imdb-grid-label rng-label">Max.</span>
           <input
             type="number"
             class="rng-input"
@@ -28,7 +34,7 @@
           />
         </label>
         <div class="rng-row rng-row-toggle">
-          <span class="rng-label" id="rng-decimals-label">Decimals</span>
+          <span class="imdb-grid-label rng-label" id="rng-decimals-label">Decimals</span>
           <button
             type="button"
             class="rng-toggle"
@@ -41,7 +47,7 @@
           </button>
         </div>
         <label class="rng-field rng-field-places is-hidden" data-rng-places-wrap>
-          <span class="rng-label">Decimal places</span>
+          <span class="imdb-grid-label rng-label">Decimal places</span>
           <select class="rng-select" data-rng-places aria-label="Decimal places">
             <option value="1">1</option>
             <option value="2" selected>2</option>
@@ -53,6 +59,7 @@
         </label>
       </div>
     </div>
+
     <button type="button" class="rng-generate" data-rng-generate>
       Generate
     </button>
