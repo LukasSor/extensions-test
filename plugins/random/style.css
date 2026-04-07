@@ -1,12 +1,19 @@
 /* Random number — card aligned with TMDb / imdb-result (theme tokens). */
 
+.rng-root.imdb-result {
+  max-width: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .rng-root {
   padding: 0;
 }
 
 .rng-panel {
-  max-width: 540px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
   padding: 1.25rem 1.35rem 1.35rem;
   border-radius: 12px;
   background: var(--bg-light);

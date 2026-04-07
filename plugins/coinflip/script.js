@@ -22,8 +22,26 @@
       resultEl.textContent = isHeadsShowing() ? "Heads" : "Tails";
     };
 
+    const SPIN_MS = 2350;
+    let unlockTimer = null;
+
+    const finishSpin = () => {
+      if (unlockTimer != null) {
+        clearTimeout(unlockTimer);
+        unlockTimer = null;
+      }
+      busy = false;
+      root.classList.remove("coinflip--spinning");
+      btn.disabled = false;
+      setResultText();
+    };
+
     const spin = () => {
       if (busy) return;
+      if (unlockTimer != null) {
+        clearTimeout(unlockTimer);
+        unlockTimer = null;
+      }
       busy = true;
       root.classList.add("coinflip--spinning");
       btn.disabled = true;
@@ -38,22 +56,23 @@
       const adjust = mod(targetRem - mod(candidate, 360), 360);
       rotationDeg = candidate + adjust;
 
+      void coin.offsetWidth;
       coin.style.transform = `rotateY(${rotationDeg}deg)`;
+      unlockTimer = window.setTimeout(finishSpin, SPIN_MS + 120);
     };
 
     const onTransitionEnd = (e) => {
-      if (e.propertyName !== "transform") return;
-      busy = false;
-      root.classList.remove("coinflip--spinning");
-      btn.disabled = false;
-      setResultText();
+      if (e.target !== coin || e.propertyName !== "transform") return;
+      finishSpin();
     };
 
     coin.addEventListener("transitionend", onTransitionEnd);
     btn.addEventListener("click", () => spin());
 
+    coin.style.transform = "rotateY(0deg)";
+
     requestAnimationFrame(() => {
-      spin();
+      requestAnimationFrame(() => spin());
     });
   }
 

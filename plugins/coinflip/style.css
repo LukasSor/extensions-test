@@ -1,12 +1,20 @@
 /* Coin flip — layout & chrome aligned with TMDb / imdb-result (theme tokens). */
 
+/* Full width of command / slot area (overrides TMDb card max-width on this root). */
+.coinflip-root.imdb-result {
+  max-width: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .coinflip-root {
   padding: 0;
 }
 
 .coinflip-panel {
-  max-width: 400px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
   padding: 1.25rem 1.35rem 1.35rem;
   border-radius: 12px;
   background: var(--bg-light);
@@ -40,6 +48,7 @@
   align-items: center;
   justify-content: center;
   perspective: 900px;
+  transform-style: preserve-3d;
   margin-bottom: 0.35rem;
 }
 

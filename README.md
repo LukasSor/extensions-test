@@ -100,6 +100,29 @@ Evaluates math expressions and shows the result above search results. Slot plugi
 
 </details>
 
+### Snake
+
+Classic Snake command: `!snake` / `!snake-game` or natural language; field size, speed, themes, and food count.
+
+<details>
+<summary>Screenshots</summary>
+
+![Snake — gameplay](plugins/snake/screenshots/1.png)
+![Snake — game over](plugins/snake/screenshots/2.png)
+
+</details>
+
+### Random number
+
+Random number generator: `!random` / `!rng` with min/max, optional decimals and decimal places.
+
+<details>
+<summary>Screenshot</summary>
+
+![Random number](plugins/random/screenshots/1.png)
+
+</details>
+
 ### Jellyfin
 
 Search your Jellyfin media library. Command plugin: query your Jellyfin server for movies, shows, and other media.
