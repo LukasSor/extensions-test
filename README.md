@@ -196,6 +196,10 @@ When search results include GitHub repos or users, shows styled info above resul
 
 </details>
 
+### Result dates
+
+Slot plugin: adds a **date badge** on each **web** result when a date appears in the snippet, title, `<time datetime>`, or **URL path** (works across engines). Must use `export default { slot }` for Degoog to load it — see [plugins/result-dates/README.md](plugins/result-dates/README.md).
+
 </details>
 
 ---

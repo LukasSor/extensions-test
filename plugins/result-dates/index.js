@@ -1,3 +1,7 @@
+/**
+ * Result dates — at-a-glance slot that only loads client script/CSS.
+ * Badges are injected into each `.result-item` by script.js (all web engines).
+ */
 let template = "";
 let resultDatesEnabled = true;
 
@@ -5,7 +9,7 @@ export const slot = {
   id: "result-dates",
   name: "Result dates",
   description:
-    "Parses dates from titles and snippets and shows a small badge on each web result (all engines).",
+    "Shows an inferred date next to each web result when the snippet, title, URL, or <time> contains a parseable date.",
   position: "at-a-glance",
 
   settingsSchema: [
@@ -14,7 +18,7 @@ export const slot = {
       label: "Enabled",
       type: "toggle",
       description:
-        "When on, inferred dates appear next to each result cite line when the snippet or title contains a recognizable date.",
+        "Turn off to hide date badges on search results (slot script will not run).",
     },
   ],
 
@@ -35,4 +39,5 @@ export const slot = {
   },
 };
 
+/** Degoog resolves `mod.slot ?? mod.default?.slot` — default must wrap `slot`. */
 export default { slot };

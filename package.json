@@ -112,8 +112,8 @@
       {
         "path": "plugins/result-dates",
         "name": "Result dates",
-        "description": "Shows inferred publish dates on each web result (snippets/titles), all engines.",
-        "version": "1.0.0",
+        "description": "Date badges on web results: snippet, title, time[datetime], or URL path; all engines. Toggle in plugin settings.",
+        "version": "1.0.1",
         "type": "slot"
       },
       {

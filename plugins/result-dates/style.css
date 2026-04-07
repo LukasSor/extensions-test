@@ -1,4 +1,4 @@
-/* Result date badges — theme-aware (same token idea as TMDb slot). */
+/* Result date badges — Degoog theme tokens */
 
 .result-date-badge {
   display: inline-flex;
@@ -7,9 +7,9 @@
   margin-left: 4px;
   font-size: 11px;
   font-weight: 500;
-  color: var(--text-secondary);
-  background: var(--bg-light);
-  border: 1px solid var(--border);
+  color: var(--text-secondary, #888);
+  background: var(--bg-light, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--border, transparent);
   border-radius: 4px;
   white-space: nowrap;
   line-height: 1.4;
@@ -17,14 +17,14 @@
 }
 
 .result-date-badge:hover {
-  background: var(--bg-hover, var(--bg-light));
-  color: var(--text-primary);
+  background: var(--bg-hover, rgba(255, 255, 255, 0.1));
+  color: var(--text-primary, #fff);
 }
 
 .result-date-badge[data-age="fresh"] {
   color: #16a34a;
-  background: color-mix(in srgb, #16a34a 12%, var(--bg-light));
-  border-color: color-mix(in srgb, #16a34a 35%, var(--border));
+  background: color-mix(in srgb, #16a34a 12%, var(--bg-light, #1a1a1a));
+  border-color: color-mix(in srgb, #16a34a 28%, var(--border, #333));
 }
 
 .result-date-badge[data-age="recent"] {
@@ -32,17 +32,17 @@
   background: color-mix(
     in srgb,
     var(--primary, #1a73e8) 12%,
-    var(--bg-light)
+    var(--bg-light, #1a1a1a)
   );
   border-color: color-mix(
     in srgb,
-    var(--primary, #1a73e8) 30%,
-    var(--border)
+    var(--primary, #1a73e8) 28%,
+    var(--border, #333)
   );
 }
 
 .result-date-badge[data-age="old"] {
-  color: var(--text-secondary);
+  color: var(--text-secondary, #666);
 }
 
 .result-date-badge::before {
@@ -65,6 +65,11 @@
 
   .result-date-badge[data-age="recent"] {
     background: rgba(26, 115, 232, 0.1);
-    border-color: rgba(26, 115, 232, 0.35);
+    border-color: rgba(26, 115, 232, 0.3);
   }
+}
+
+[data-theme="light"] .result-date-badge {
+  background: var(--bg-light, #f4f4f5);
+  border-color: var(--border, #e4e4e7);
 }

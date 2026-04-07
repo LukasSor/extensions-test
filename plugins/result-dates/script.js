@@ -1,8 +1,13 @@
-// Result dates — client-side badges on every web result (all engines share .result-item markup).
+// Result dates — client-side badges on web results (all engines share result markup).
 (function () {
   "use strict";
 
   const patterns = [
+    {
+      regex:
+        /\b(\d{4}-\d{1,2}-\d{1,2}T\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)\b/,
+      parse: (match) => new Date(match[1]),
+    },
     {
       regex: /\b(\d{4}-\d{1,2}-\d{1,2})\b/,
       parse: (match) => new Date(match[1]),
@@ -10,16 +15,6 @@
     {
       regex: /\b(\d{4}\/\d{1,2}\/\d{1,2})\b/,
       parse: (match) => new Date(match[1].replace(/\//g, "-")),
-    },
-    {
-      regex:
-        /\b((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4})\b/i,
-      parse: (match) => new Date(match[1]),
-    },
-    {
-      regex:
-        /\b(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4})\b/i,
-      parse: (match) => new Date(match[1]),
     },
     {
       regex: /\b(\d{1,2})[./](\d{1,2})[./](\d{4})\b/,
@@ -31,6 +26,16 @@
         if (b > 12) return new Date(y, a - 1, b);
         return new Date(y, b - 1, a);
       },
+    },
+    {
+      regex:
+        /\b((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4})\b/i,
+      parse: (match) => new Date(match[1]),
+    },
+    {
+      regex:
+        /\b(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4})\b/i,
+      parse: (match) => new Date(match[1]),
     },
     {
       regex: /\b(\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago\b/i,
@@ -86,6 +91,13 @@
     const diffMs = now - date;
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
+    if (diffDays < 0) {
+      return date.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    }
     if (diffDays === 0) return "Today";
     if (diffDays === 1) return "Yesterday";
     if (diffDays < 7) return `${diffDays} days ago`;
@@ -108,13 +120,11 @@
   function parseDatetimeAttr(iso) {
     if (!iso || typeof iso !== "string") return null;
     const d = new Date(iso.trim());
-    if (isNaN(d.getTime())) return null;
-    return d;
+    return isNaN(d.getTime()) ? null : d;
   }
 
   function extractDateFromText(text) {
     if (!text) return null;
-
     for (const pattern of patterns) {
       const match = text.match(pattern.regex);
       if (match) {
@@ -128,46 +138,110 @@
             };
           }
         } catch {
-          /* next */
+          /* continue */
         }
       }
     }
     return null;
   }
 
-  function snippetEls(root) {
-    return root.querySelectorAll(
-      ".result-snippet, .result-description, p.result-snippet",
+  /** YYYY/MM/DD or YYYY-MM-DD in path or query (blogs, news, Wikipedia /wiki/2024_foo). */
+  function extractDateFromUrl(href) {
+    if (!href || typeof href !== "string") return null;
+    if (/^(javascript:|#|mailto:)/i.test(href)) return null;
+    try {
+      const u = new URL(href, document.baseURI);
+      const blob = u.pathname + " " + u.search + " " + u.hash;
+      const m = blob.match(
+        /(?:^|\/)(\d{4})[/-](\d{1,2})[/-](\d{1,2})(?:\/|$|[?&#])/,
+      );
+      if (m) {
+        const y = parseInt(m[1], 10);
+        const mo = parseInt(m[2], 10);
+        const d = parseInt(m[3], 10);
+        const date = new Date(y, mo - 1, d);
+        if (!isNaN(date.getTime())) {
+          return {
+            date,
+            formatted: formatDate(date),
+            original: `${m[1]}-${m[2]}-${m[3]}`,
+          };
+        }
+      }
+      const q = u.searchParams;
+      for (const key of ["date", "published", "pubdate", "time"]) {
+        const v = q.get(key);
+        if (v) {
+          const d = parseDatetimeAttr(v);
+          if (d) {
+            return {
+              date: d,
+              formatted: formatDate(d),
+              original: v,
+            };
+          }
+        }
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  }
+
+  function snippetText(resultEl) {
+    const parts = [];
+    const nodes = resultEl.querySelectorAll(
+      ".result-snippet, .result-description, [class*='result-snippet'], [class*='snippet']",
     );
+    nodes.forEach((el) => {
+      const t = (el.textContent || "").trim();
+      if (t) parts.push(t);
+    });
+    return parts.join(" ");
+  }
+
+  function titleText(resultEl) {
+    const t = resultEl.querySelector(
+      "a.result-title, .result-title, h2 a[href], h3 a[href], .result-heading a",
+    );
+    return (t && t.textContent) || "";
+  }
+
+  function primaryHref(resultEl) {
+    const direct = resultEl.querySelector(
+      "a.result-title[href], a.result-title[href], .result-title[href], h2 a[href^='http'], h3 a[href^='http']",
+    );
+    if (direct && direct.href && !/^javascript:/i.test(direct.href)) {
+      return direct.href;
+    }
+    const links = resultEl.querySelectorAll("a[href^='http']");
+    for (let i = 0; i < links.length; i++) {
+      const h = links[i].href;
+      if (h && !/^javascript:/i.test(h)) return h;
+    }
+    return "";
   }
 
   function extractDateFromResult(resultEl) {
     const times = resultEl.querySelectorAll("time[datetime]");
-    for (const t of times) {
-      const d = parseDatetimeAttr(t.getAttribute("datetime"));
+    for (const el of times) {
+      const d = parseDatetimeAttr(el.getAttribute("datetime"));
       if (d) {
         return {
           date: d,
           formatted: formatDate(d),
-          original: t.getAttribute("datetime") || "",
+          original: el.getAttribute("datetime") || "",
         };
       }
     }
 
-    let text = "";
-    for (const el of snippetEls(resultEl)) {
-      text += (el.textContent || "") + " ";
-    }
-    let dateInfo = extractDateFromText(text.trim());
-    if (dateInfo) return dateInfo;
+    const snip = snippetText(resultEl);
+    const title = titleText(resultEl);
+    let info = extractDateFromText(snip) || extractDateFromText(title);
+    if (info) return info;
 
-    const title = resultEl.querySelector(
-      ".result-title, a.result-title, h3 a, .result-heading a",
-    );
-    if (title) {
-      dateInfo = extractDateFromText(title.textContent || "");
-    }
-    return dateInfo;
+    const href = primaryHref(resultEl);
+    return extractDateFromUrl(href);
   }
 
   function getAgeBucket(date) {
@@ -191,32 +265,37 @@
       day: "numeric",
     });
 
-    const cite = resultEl.querySelector(".result-cite, cite.result-cite");
+    const cite = resultEl.querySelector("cite.result-cite, .result-cite, cite");
     if (cite) {
       cite.after(badge);
       return;
     }
-
-    const urlRow = resultEl.querySelector(".result-url-row");
+    const urlRow = resultEl.querySelector(
+      ".result-url-row, .result-meta-row, [class*='url-row']",
+    );
     if (urlRow) {
       urlRow.appendChild(badge);
       return;
     }
-
-    const snippet = resultEl.querySelector(".result-snippet, .result-description");
+    const snippet = resultEl.querySelector(
+      ".result-snippet, .result-description, p",
+    );
     if (snippet) {
       snippet.insertBefore(badge, snippet.firstChild);
+      return;
     }
+    resultEl.appendChild(badge);
+  }
+
+  function resultNodes() {
+    return document.querySelectorAll(
+      "#results-list .result-item, #results-main .result-item, .results-list .result-item, main .result-item, .result-item",
+    );
   }
 
   function processResults() {
-    const results = document.querySelectorAll(
-      ".result-item, article.result-item, [data-result-item]",
-    );
-
-    results.forEach((result) => {
-      if (result.dataset.dateProcessed === "true") return;
-      result.dataset.dateProcessed = "true";
+    resultNodes().forEach((result) => {
+      if (result.querySelector(".result-date-badge")) return;
 
       const dateInfo = extractDateFromResult(result);
       if (dateInfo && dateInfo.formatted) {
@@ -225,28 +304,23 @@
     });
   }
 
-  function findObserverRoot() {
+  function observerTarget() {
     return (
       document.getElementById("results-list") ||
-      document.querySelector(".results-list, [data-results-list], main") ||
+      document.getElementById("results-main") ||
+      document.querySelector(".results-list, [data-results], main") ||
       document.body
     );
   }
 
   function startObserver() {
-    const target = findObserverRoot();
-    let debounceTimer = null;
-
+    const target = observerTarget();
+    let t = null;
     const observer = new MutationObserver(() => {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(processResults, 150);
+      clearTimeout(t);
+      t = setTimeout(processResults, 120);
     });
-
-    observer.observe(target, {
-      childList: true,
-      subtree: true,
-    });
-
+    observer.observe(target, { childList: true, subtree: true });
     processResults();
   }
 
