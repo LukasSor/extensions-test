@@ -1,6 +1,8 @@
 # fccview-degoog-extensions
 
-Official extensions pack for degoog.
+**Test / experimental pack — not stable.** This repository is for trying changes and plugins; things may break, disappear, or change without notice. Prefer the upstream **fccview** extensions if you need something dependable for day-to-day use.
+
+Maintainer: **Lukasw**.
 
 ---
 

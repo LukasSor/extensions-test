@@ -1,0 +1,49 @@
+<div class="snake-slot" tabindex="0" data-snake-config="{{config}}">
+  <div class="snake-slot-head">
+    <h3 class="snake-slot-title">Snake</h3>
+    <p class="snake-slot-sub">Use the arrow keys. Choose options below, then Start.</p>
+  </div>
+  <div class="snake-toolbar">
+    <label class="snake-field">
+      <span class="snake-label">Field</span>
+      <select class="snake-select snake-select-field" aria-label="Field size">
+        <option value="small">Small</option>
+        <option value="medium">Medium</option>
+        <option value="large">Large</option>
+      </select>
+    </label>
+    <label class="snake-field">
+      <span class="snake-label">Speed</span>
+      <select class="snake-select snake-select-speed" aria-label="Game speed">
+        <option value="turtle">Turtle</option>
+        <option value="rabbit">Rabbit</option>
+        <option value="snake">Snake</option>
+      </select>
+    </label>
+    <label class="snake-field">
+      <span class="snake-label">Theme</span>
+      <select class="snake-select snake-select-theme" aria-label="Field theme">
+        <option value="normal">Normal (green)</option>
+        <option value="dark">Dark</option>
+        <option value="frozen">Frozen (blue)</option>
+        <option value="vulcan">Vulcan (red / brown)</option>
+        <option value="chess">Chess (white / black)</option>
+        <option value="synthwave">Synthwave</option>
+      </select>
+    </label>
+    <label class="snake-field">
+      <span class="snake-label">Food on field</span>
+      <select class="snake-select snake-select-food" aria-label="Number of food pellets">
+        <option value="1">1</option>
+        <option value="3">3</option>
+        <option value="5">5</option>
+      </select>
+    </label>
+    <button type="button" class="snake-start">Start</button>
+    <span class="snake-score" aria-live="polite">Score: 0</span>
+  </div>
+  <div class="snake-canvas-wrap">
+    <canvas class="snake-canvas" width="400" height="400" aria-label="Snake game"></canvas>
+  </div>
+  <p class="snake-status" aria-live="polite"></p>
+</div>

@@ -1,0 +1,133 @@
+.snake-slot {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--bg-light);
+  color: var(--text-primary);
+  max-width: 640px;
+  padding: 0.75rem 0;
+  outline: none;
+}
+
+.snake-slot-head {
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-light);
+  padding-bottom: 0.5rem;
+}
+
+.snake-slot-title {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.snake-slot-sub {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.snake-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem 0.85rem;
+  margin-bottom: 0.65rem;
+}
+
+.snake-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.snake-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.snake-select {
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background: var(--bg-light);
+  color: var(--text-primary);
+  max-width: 11rem;
+}
+
+.snake-start {
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.4rem 1rem;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent, #2563eb);
+  color: #fff;
+  cursor: pointer;
+}
+
+.snake-start:hover {
+  filter: brightness(1.06);
+}
+
+.snake-start:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+}
+
+.snake-score {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-left: auto;
+  align-self: center;
+}
+
+.snake-canvas-wrap {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+  display: inline-block;
+  line-height: 0;
+  max-width: 100%;
+}
+
+.snake-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  touch-action: none;
+}
+
+.snake-status {
+  margin: 0.5rem 0 0 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  min-height: 1.2em;
+}
+
+@media (max-width: 520px) {
+  .snake-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .snake-field {
+    width: 100%;
+  }
+
+  .snake-select {
+    max-width: none;
+  }
+
+  .snake-score {
+    margin-left: 0;
+  }
+}

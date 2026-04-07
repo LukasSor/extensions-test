@@ -1,8 +1,8 @@
 {
     "name": "fccview-degoog-extensions",
-    "description": "Plugins, themes, engines, and transports for degoog search.",
-    "repo-image": "https://avatars.githubusercontent.com/u/112867047?s=512",
-    "author": "fccview",
+    "description": "Experimental test fork — not stable: do not rely on this repo for production. Plugins, themes, engines, and transports for degoog search. Maintained by Lukasw.",
+    "repo-image": "https://static.vecteezy.com/system/resources/previews/043/505/733/non_2x/anime-cartoon-characters-cute-cats-in-spring-pictures-happy-cute-art-animals-kittens-pets-graphics-cats-vector.jpg",
+    "author": "Lukasw",
     "plugins": [
       {
         "path": "plugins/weather",
@@ -58,6 +58,13 @@
         "name": "Math",
         "description": "Evaluates math expressions and shows the result above search results.",
         "version": "1.1.1",
+        "type": "slot"
+      },
+      {
+        "path": "plugins/snake-slot",
+        "name": "Snake",
+        "description": "Type snake or play snake to play Snake above results: field size, speed (turtle / rabbit / snake), themes, and 1–5 food pellets.",
+        "version": "1.0.0",
         "type": "slot"
       },
       {
