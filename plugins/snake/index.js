@@ -71,7 +71,7 @@ export default {
       type: "select",
       options: ["small", "medium", "large"],
       description:
-        "Starting grid: small (12×12), medium (18×18), large (26×26). You can change this in the panel before Start.",
+        "Starting grid (wide × tall): small (9×10), medium (15×17), large (21×24). You can change this in the panel before Start.",
     },
     {
       key: "defaultSpeed",

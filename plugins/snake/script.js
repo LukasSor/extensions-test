@@ -1,5 +1,10 @@
 (function () {
-  const FIELD_DIM = { small: 12, medium: 18, large: 26 };
+  /** Width × height (columns × rows); second dimension is longer on each preset. */
+  const FIELD_DIM = {
+    small: { w: 9, h: 10 },
+    medium: { w: 15, h: 17 },
+    large: { w: 21, h: 24 },
+  };
   const SPEED_MS = { turtle: 220, rabbit: 95, snake: 145 };
 
   const THEMES = {
@@ -98,45 +103,50 @@
     const px = seg.x * cell;
     const py = seg.y * cell;
     const s = cell;
-    const ew = Math.max(2, Math.round(s * 0.22));
-    const eh = Math.max(2, Math.round(s * 0.2));
-    const pup = Math.max(1, Math.round(ew * 0.45));
+    const ew = Math.max(2, Math.round(s * 0.18));
+    const eh = Math.max(2, Math.round(s * 0.17));
+    const pup = Math.max(1, Math.round(ew * 0.38));
     const inset = Math.max(0, Math.floor(s * 0.08));
-    const margin = Math.max(1, Math.round(s * 0.05));
+    const margin = Math.max(1, Math.round(s * 0.04));
 
     const hx0 = px + inset;
     const hy0 = py + inset;
     const hx1 = px + s - inset;
     const hy1 = py + s - inset;
+    const midY = Math.round((hy0 + hy1) / 2);
+    const midX = Math.round((hx0 + hx1) / 2);
+
+    /** Inset eyes/nose from the leading edge so the face sits nearer the middle of the tile. */
+    const fromFront = Math.round(s * 0.2);
 
     let ex1, ey1, ex2, ey2;
     let pdx, pdy;
     if (dir.x === 1) {
-      ex1 = hx1 - ew - Math.round(s * 0.06);
-      ey1 = hy0 + Math.round(s * 0.16);
+      ex1 = hx1 - ew - fromFront;
+      ey1 = midY - eh - Math.round(s * 0.07);
       ex2 = ex1;
-      ey2 = hy0 + Math.round(s * 0.64) - eh;
+      ey2 = midY + Math.round(s * 0.07);
       pdx = 1;
       pdy = 0;
     } else if (dir.x === -1) {
-      ex1 = hx0 + Math.round(s * 0.06);
-      ey1 = hy0 + Math.round(s * 0.16);
+      ex1 = hx0 + fromFront;
+      ey1 = midY - eh - Math.round(s * 0.07);
       ex2 = ex1;
-      ey2 = hy0 + Math.round(s * 0.64) - eh;
+      ey2 = midY + Math.round(s * 0.07);
       pdx = -1;
       pdy = 0;
     } else if (dir.y === -1) {
-      ey1 = hy0 + Math.round(s * 0.06);
-      ex1 = hx0 + Math.round(s * 0.18);
+      ey1 = hy0 + fromFront;
+      ex1 = midX - ew - Math.round(s * 0.07);
       ey2 = ey1;
-      ex2 = hx0 + Math.round(s * 0.64) - ew;
+      ex2 = midX + Math.round(s * 0.07);
       pdx = 0;
       pdy = -1;
     } else {
-      ey1 = hy1 - eh - Math.round(s * 0.06);
-      ex1 = hx0 + Math.round(s * 0.18);
+      ey1 = hy1 - eh - fromFront;
+      ex1 = midX - ew - Math.round(s * 0.07);
       ey2 = ey1;
-      ex2 = hx0 + Math.round(s * 0.64) - ew;
+      ex2 = midX + Math.round(s * 0.07);
       pdx = 0;
       pdy = 1;
     }
@@ -159,20 +169,25 @@
     drawPupil(ex1, ey1);
     drawPupil(ex2, ey2);
 
-    const nz = Math.max(1, Math.round(s * 0.06));
+    const nz = Math.max(1, Math.round(s * 0.045));
+    const nyOff = Math.round(eh / 2) - Math.floor(nz / 2);
     ctx.fillStyle = th.nostril;
     if (dir.x === 1) {
-      ctx.fillRect(hx1 - nz - 1, ey1 + Math.round(eh / 2) - 1, nz, nz);
-      ctx.fillRect(hx1 - nz - 1, ey2 + Math.round(eh / 2) - 1, nz, nz);
+      const nx = hx1 - fromFront + Math.round(ew * 0.35);
+      ctx.fillRect(nx, ey1 + nyOff, nz, nz);
+      ctx.fillRect(nx, ey2 + nyOff, nz, nz);
     } else if (dir.x === -1) {
-      ctx.fillRect(hx0 + 1, ey1 + Math.round(eh / 2) - 1, nz, nz);
-      ctx.fillRect(hx0 + 1, ey2 + Math.round(eh / 2) - 1, nz, nz);
+      const nx = hx0 + fromFront - Math.round(ew * 0.35) - nz;
+      ctx.fillRect(nx, ey1 + nyOff, nz, nz);
+      ctx.fillRect(nx, ey2 + nyOff, nz, nz);
     } else if (dir.y === -1) {
-      ctx.fillRect(ex1 + Math.round(ew / 2) - 1, hy0 + 1, nz, nz);
-      ctx.fillRect(ex2 + Math.round(ew / 2) - 1, hy0 + 1, nz, nz);
+      const ny = hy0 + fromFront - Math.round(ew * 0.35) - nz;
+      ctx.fillRect(ex1 + nyOff, ny, nz, nz);
+      ctx.fillRect(ex2 + nyOff, ny, nz, nz);
     } else {
-      ctx.fillRect(ex1 + Math.round(ew / 2) - 1, hy1 - nz - 1, nz, nz);
-      ctx.fillRect(ex2 + Math.round(ew / 2) - 1, hy1 - nz - 1, nz, nz);
+      const ny = hy1 - fromFront + Math.round(ew * 0.35);
+      ctx.fillRect(ex1 + nyOff, ny, nz, nz);
+      ctx.fillRect(ex2 + nyOff, ny, nz, nz);
     }
   }
 
@@ -208,7 +223,8 @@
     const foods = new Set();
     let score = 0;
     let running = false;
-    let grid = 18;
+    let gridW = 15;
+    let gridH = 17;
 
     const getTheme = () =>
       THEMES[selTheme && selTheme.value] || THEMES.normal;
@@ -249,26 +265,28 @@
         typeof window.devicePixelRatio === "number"
           ? window.devicePixelRatio
           : 1;
-      const gs = grid;
-      const cell = Math.max(6, Math.floor(maxPx / gs));
-      const px = cell * gs;
-      canvas.width = Math.floor(px * dpr);
-      canvas.height = Math.floor(px * dpr);
-      canvas.style.width = px + "px";
-      canvas.style.height = px + "px";
+      const gMax = Math.max(gridW, gridH);
+      const cell = Math.max(6, Math.floor(maxPx / gMax));
+      const pxW = cell * gridW;
+      const pxH = cell * gridH;
+      canvas.width = Math.floor(pxW * dpr);
+      canvas.height = Math.floor(pxH * dpr);
+      canvas.style.width = pxW + "px";
+      canvas.style.height = pxH + "px";
       const ctx = canvas.getContext("2d");
       if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      return { ctx, cell, px };
+      return { ctx, cell, pxW, pxH };
     };
 
     const draw = () => {
       const { ctx, cell } = resizeCanvas();
       if (!ctx) return;
       const th = getTheme();
-      const g = grid;
+      const gw = gridW;
+      const gh = gridH;
 
-      for (let y = 0; y < g; y++) {
-        for (let x = 0; x < g; x++) {
+      for (let y = 0; y < gh; y++) {
+        for (let x = 0; x < gw; x++) {
           const alt = (x + y) % 2 === 0;
           if (th.chess) {
             ctx.fillStyle = alt ? th.boardA : th.boardB;
@@ -316,8 +334,8 @@
       const occ = occupied();
       for (const f of foods) occ.add(f);
       const empty = [];
-      for (let y = 0; y < grid; y++) {
-        for (let x = 0; x < grid; x++) {
+      for (let y = 0; y < gridH; y++) {
+        for (let x = 0; x < gridW; x++) {
           if (!occ.has(_key(x, y))) empty.push({ x, y });
         }
       }
@@ -335,9 +353,12 @@
     };
 
     const resetGame = () => {
-      grid = FIELD_DIM[(selField && selField.value) || "medium"] || 18;
-      const cx = Math.floor(grid / 2);
-      const cy = Math.floor(grid / 2);
+      const key = (selField && selField.value) || "medium";
+      const dim = FIELD_DIM[key] || FIELD_DIM.medium;
+      gridW = dim.w;
+      gridH = dim.h;
+      const cx = Math.floor(gridW / 2);
+      const cy = Math.floor(gridH / 2);
       snake = [
         { x: cx - 2, y: cy },
         { x: cx - 1, y: cy },
@@ -375,7 +396,7 @@
       const head = snake[snake.length - 1];
       const nx = head.x + dir.x;
       const ny = head.y + dir.y;
-      if (nx < 0 || ny < 0 || nx >= grid || ny >= grid) {
+      if (nx < 0 || ny < 0 || nx >= gridW || ny >= gridH) {
         gameOver("Hit the wall.");
         return;
       }
