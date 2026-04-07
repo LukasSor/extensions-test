@@ -1,5 +1,6 @@
 let templateHtml = "";
 let snakeEnabled = true;
+let naturalLanguageEnabled = false;
 let defaultField = "medium";
 let defaultSpeed = "snake";
 let defaultTheme = "normal";
@@ -40,90 +41,140 @@ const _normalizeSettings = (settings) => {
   };
 };
 
+const _applyConfigure = (settings) => {
+  snakeEnabled = settings?.enabled !== "false";
+  naturalLanguageEnabled =
+    settings?.naturalLanguage === true || settings?.naturalLanguage === "true";
+  const n = _normalizeSettings(settings || {});
+  defaultField = n.field;
+  defaultSpeed = n.speed;
+  defaultTheme = n.theme;
+  defaultFood = n.food;
+};
+
+const _buildHtml = () => {
+  const cfg = {
+    field: defaultField,
+    speed: defaultSpeed,
+    theme: defaultTheme,
+    food: defaultFood,
+  };
+  const encoded = encodeURIComponent(JSON.stringify(cfg));
+  return (templateHtml || "").replace(/\{\{config\}\}/g, encoded);
+};
+
+async function _initTemplate(ctx) {
+  if (ctx.readFile && !templateHtml) {
+    templateHtml = await ctx.readFile("template.html");
+  }
+}
+
+const SETTINGS_SCHEMA = [
+  {
+    key: "enabled",
+    label: "Enabled",
+    type: "toggle",
+    description: "Turn off to disable Snake entirely (!snake and the slot).",
+  },
+  {
+    key: "naturalLanguage",
+    label: "Natural language in search",
+    type: "toggle",
+    description:
+      "When on, plain searches like “snake” open the game above results. When off, use the !snake command only.",
+  },
+  {
+    key: "defaultField",
+    label: "Default field size",
+    type: "select",
+    options: ["small", "medium", "large"],
+    description: "Initial grid size (change in the game panel before Play).",
+  },
+  {
+    key: "defaultSpeed",
+    label: "Default speed",
+    type: "select",
+    options: ["turtle", "rabbit", "snake"],
+    description: "Snake = default pace between turtle and rabbit.",
+  },
+  {
+    key: "defaultTheme",
+    label: "Default theme",
+    type: "select",
+    options: [
+      "normal",
+      "dark",
+      "frozen",
+      "vulcan",
+      "chess",
+      "synthwave",
+    ],
+    description: "Colors for grid, snake, and food.",
+  },
+  {
+    key: "foodOnField",
+    label: "Food pellets on field",
+    type: "select",
+    options: ["1", "3", "5"],
+    description:
+      "Pellets on the board at once; eating one spawns another until this count is restored.",
+  },
+];
+
 export const slot = {
   id: "snake-slot",
   name: "Snake",
-  description: "Play Snake from the search bar (e.g. type “snake” or “play snake”).",
+  description:
+    "Snake mini-game: optional plain-search trigger, or run !snake. Field size, speed, themes, multi-food.",
   position: "at-a-glance",
 
-  settingsSchema: [
-    {
-      key: "enabled",
-      label: "Enabled",
-      type: "toggle",
-      description: "Show the Snake game when the search matches snake / play snake.",
-    },
-    {
-      key: "defaultField",
-      label: "Default field size",
-      type: "select",
-      options: ["small", "medium", "large"],
-      description: "Initial grid size in the game panel (can be changed before Start).",
-    },
-    {
-      key: "defaultSpeed",
-      label: "Default speed",
-      type: "select",
-      options: ["turtle", "rabbit", "snake"],
-      description: "Snake = default pace between turtle and rabbit.",
-    },
-    {
-      key: "defaultTheme",
-      label: "Default theme",
-      type: "select",
-      options: [
-        "normal",
-        "dark",
-        "frozen",
-        "vulcan",
-        "chess",
-        "synthwave",
-      ],
-      description: "Colors for grid, snake, and food.",
-    },
-    {
-      key: "foodOnField",
-      label: "Food pellets on field",
-      type: "select",
-      options: ["1", "3", "5"],
-      description:
-        "How many pellets exist at once; eating one spawns another until this count is restored.",
-    },
-  ],
+  settingsSchema: SETTINGS_SCHEMA,
 
-  async init(ctx) {
-    if (ctx.readFile) {
-      templateHtml = await ctx.readFile("template.html");
-    }
-  },
+  init: _initTemplate,
 
   configure(settings) {
-    snakeEnabled = settings?.enabled !== "false";
-    const n = _normalizeSettings(settings || {});
-    defaultField = n.field;
-    defaultSpeed = n.speed;
-    defaultTheme = n.theme;
-    defaultFood = n.food;
+    _applyConfigure(settings || {});
   },
 
   trigger(query) {
-    if (!snakeEnabled) return false;
+    if (!snakeEnabled || !naturalLanguageEnabled) return false;
     return _matchesSnakeQuery(query);
   },
 
   async execute() {
-    const cfg = {
-      field: defaultField,
-      speed: defaultSpeed,
-      theme: defaultTheme,
-      food: defaultFood,
-    };
-    const encoded = encodeURIComponent(JSON.stringify(cfg));
-
-    const html = (templateHtml || "").replace(/\{\{config\}\}/g, encoded);
-
-    return { title: "Snake", html };
+    if (!snakeEnabled) {
+      return {
+        title: "Snake",
+        html: `<div class="snake-slot snake-slot--disabled"><p class="snake-disabled-msg">Snake is disabled in plugin settings.</p></div>`,
+      };
+    }
+    return { title: "Snake", html: _buildHtml() };
   },
 };
 
-export default { slot };
+export const command = {
+  name: "Snake",
+  description: "Open the Snake game (!snake). Configure defaults under Plugins → Snake (slot).",
+  trigger: "snake",
+  aliases: ["snake-game"],
+
+  settingsSchema: SETTINGS_SCHEMA,
+
+  init: _initTemplate,
+
+  configure(settings) {
+    _applyConfigure(settings || {});
+  },
+
+  async execute() {
+    if (!snakeEnabled) {
+      return {
+        title: "Snake",
+        html: `<div class="command-result"><p>Snake is disabled in plugin settings.</p></div>`,
+      };
+    }
+    return { title: "Snake", html: _buildHtml() };
+  },
+};
+
+export default { slot, command };

@@ -70,7 +70,9 @@
     root.dataset.snakeBooted = "1";
 
     const canvas = root.querySelector(".snake-canvas");
-    const btnStart = root.querySelector(".snake-start");
+    const btnPlay = root.querySelector(".snake-play");
+    const btnSettings = root.querySelector(".snake-settings-toggle");
+    const panel = root.querySelector("[data-snake-settings]");
     const selField = root.querySelector(".snake-select-field");
     const selSpeed = root.querySelector(".snake-select-speed");
     const selTheme = root.querySelector(".snake-select-theme");
@@ -78,7 +80,7 @@
     const elScore = root.querySelector(".snake-score");
     const elStatus = root.querySelector(".snake-status");
 
-    if (!canvas || !btnStart) return;
+    if (!canvas || !btnPlay || !panel) return;
 
     const cfg = _parseConfig(root);
     if (cfg.field && selField) selField.value = cfg.field;
@@ -93,7 +95,35 @@
     const foods = new Set();
     let score = 0;
     let running = false;
+
     let grid = 18;
+
+    const setSettingsOpen = (open) => {
+      if (open) {
+        panel.setAttribute("data-snake-settings-collapsed", "false");
+        if (btnSettings) {
+          btnSettings.setAttribute("aria-expanded", "true");
+        }
+      } else {
+        panel.setAttribute("data-snake-settings-collapsed", "true");
+        if (btnSettings) {
+          btnSettings.setAttribute("aria-expanded", "false");
+        }
+      }
+    };
+
+    const setPlayingUi = (playing) => {
+      if (playing) {
+        root.classList.add("snake-slot--playing");
+        setSettingsOpen(false);
+        btnPlay.textContent = "Restart";
+        if (btnSettings) btnSettings.disabled = true;
+      } else {
+        root.classList.remove("snake-slot--playing");
+        btnPlay.textContent = "Start";
+        if (btnSettings) btnSettings.disabled = false;
+      }
+    };
 
     const getTheme = () =>
       THEMES[selTheme && selTheme.value] || THEMES.normal;
@@ -111,8 +141,13 @@
 
     const resizeCanvas = () => {
       const wrap = canvas.parentElement;
-      const maxPx = wrap ? Math.min(400, wrap.clientWidth || 400) : 400;
-      const dpr = typeof window.devicePixelRatio === "number" ? window.devicePixelRatio : 1;
+      const maxPx = wrap
+        ? Math.min(360, wrap.clientWidth || 360)
+        : 360;
+      const dpr =
+        typeof window.devicePixelRatio === "number"
+          ? window.devicePixelRatio
+          : 1;
       const gs = grid;
       const cell = Math.max(6, Math.floor(maxPx / gs));
       const px = cell * gs;
@@ -136,12 +171,18 @@
       for (let y = 0; y < g; y++) {
         for (let x = 0; x < g; x++) {
           if (th.chess) {
-            ctx.fillStyle = (x + y) % 2 === 0 ? "#f5f5f5" : "#171717";
+            ctx.fillStyle =
+              (x + y) % 2 === 0 ? "#f5f5f5" : "#171717";
             ctx.fillRect(x * cell, y * cell, cell, cell);
           } else {
             ctx.strokeStyle = th.grid;
             ctx.lineWidth = 1;
-            ctx.strokeRect(x * cell + 0.5, y * cell + 0.5, cell - 1, cell - 1);
+            ctx.strokeRect(
+              x * cell + 0.5,
+              y * cell + 0.5,
+              cell - 1,
+              cell - 1,
+            );
           }
         }
       }
@@ -185,9 +226,9 @@
         }
       }
       if (empty.length === 0) return false;
-        const pick = empty[Math.floor(Math.random() * empty.length)];
-        foods.add(_key(pick.x, pick.y));
-        return true;
+      const pick = empty[Math.floor(Math.random() * empty.length)];
+      foods.add(_key(pick.x, pick.y));
+      return true;
     };
 
     const replenishFood = () => {
@@ -210,7 +251,7 @@
       pendingDir = null;
       foods.clear();
       score = 0;
-      if (elScore) elScore.textContent = "Score: 0";
+      if (elScore) elScore.textContent = "0";
       if (elStatus) elStatus.textContent = "";
       replenishFood();
       draw();
@@ -222,7 +263,13 @@
         clearInterval(timer);
         timer = null;
       }
-      if (elStatus) elStatus.textContent = msg || "Game over — press Start to play again.";
+      setPlayingUi(false);
+      setSettingsOpen(true);
+      if (elStatus) {
+        elStatus.textContent =
+          msg ||
+          "Game over — change settings if you like, then Start.";
+      }
       draw();
     };
 
@@ -255,7 +302,7 @@
       if (onFood) {
         foods.delete(nk);
         score += 1;
-        if (elScore) elScore.textContent = "Score: " + score;
+        if (elScore) elScore.textContent = String(score);
         replenishFood();
       } else {
         snake.shift();
@@ -270,6 +317,7 @@
       }
       resetGame();
       running = true;
+      setPlayingUi(true);
       if (elStatus) elStatus.textContent = "Go!";
       canvas.tabIndex = 0;
       canvas.focus();
@@ -278,7 +326,16 @@
       timer = setInterval(tick, spd);
     };
 
-    btnStart.addEventListener("click", startGame);
+    btnPlay.addEventListener("click", startGame);
+
+    if (btnSettings) {
+      btnSettings.addEventListener("click", () => {
+        if (running) return;
+        const collapsed =
+          panel.getAttribute("data-snake-settings-collapsed") === "true";
+        setSettingsOpen(collapsed);
+      });
+    }
 
     const onKey = (e) => {
       if (!running) return;
@@ -301,11 +358,13 @@
       draw();
     });
 
+    panel.setAttribute("data-snake-settings-collapsed", "false");
+    if (btnSettings) btnSettings.setAttribute("aria-expanded", "true");
     resetGame();
   }
 
   function scan() {
-    document.querySelectorAll(".snake-slot").forEach(boot);
+    document.querySelectorAll(".snake-slot:not(.snake-slot--disabled)").forEach(boot);
   }
 
   if (document.readyState === "loading") {
