@@ -47,7 +47,7 @@ const _buildHtml = () => {
 export default {
   name: "Snake",
   description:
-    "Play Snake: use !snake or !snake-game, or enable Natural language (under Plugins, like Weather) to type snake or play snake without the bang.",
+    "Snake mini-game: type !snake or !snake-game, or enable Natural language (Plugins) and say e.g. play snake. Choose board size, speed, theme, and number of apples before you start.",
   trigger: "snake",
   aliases: ["snake-game"],
   naturalLanguagePhrases: [
@@ -71,7 +71,7 @@ export default {
       type: "select",
       options: ["small", "medium", "large"],
       description:
-        "Starting grid (wide × tall): small (9×10), medium (15×17), large (21×24). You can change this in the panel before Start.",
+        "Starting grid (x wide × y tall; x is the longer side): small (10×9), medium (17×15), large (24×21). Change it in the panel before Start.",
     },
     {
       key: "defaultSpeed",

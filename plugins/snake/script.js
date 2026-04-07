@@ -1,9 +1,9 @@
 (function () {
-  /** Width × height (columns × rows); second dimension is longer on each preset. */
+  /** Width (x) × height (y); width is always the larger side on each preset. */
   const FIELD_DIM = {
-    small: { w: 9, h: 10 },
-    medium: { w: 15, h: 17 },
-    large: { w: 21, h: 24 },
+    small: { w: 10, h: 9 },
+    medium: { w: 17, h: 15 },
+    large: { w: 24, h: 21 },
   };
   const SPEED_MS = { turtle: 220, rabbit: 95, snake: 145 };
 
@@ -103,92 +103,110 @@
     const px = seg.x * cell;
     const py = seg.y * cell;
     const s = cell;
-    const ew = Math.max(2, Math.round(s * 0.18));
-    const eh = Math.max(2, Math.round(s * 0.17));
-    const pup = Math.max(1, Math.round(ew * 0.38));
-    const inset = Math.max(0, Math.floor(s * 0.08));
-    const margin = Math.max(1, Math.round(s * 0.04));
-
+    const inset = Math.max(0, Math.floor(s * 0.1));
     const hx0 = px + inset;
     const hy0 = py + inset;
     const hx1 = px + s - inset;
     const hy1 = py + s - inset;
-    const midY = Math.round((hy0 + hy1) / 2);
-    const midX = Math.round((hx0 + hx1) / 2);
+    const midX = (hx0 + hx1) / 2;
+    const midY = (hy0 + hy1) / 2;
 
-    /** Inset eyes/nose from the leading edge so the face sits nearer the middle of the tile. */
-    const fromFront = Math.round(s * 0.2);
+    const eyeR = Math.max(1.75, s * 0.11);
+    const pupilR = Math.max(1, eyeR * 0.4);
+    /** Half-distance between the two eye centers (perpendicular to travel). */
+    const eyeSpread = s * 0.14;
+    /** How far the eye column/row sits back from the muzzle (fraction of cell). */
+    const backOff = s * 0.3;
+    const pupilNudge = Math.max(0.6, eyeR * 0.32);
 
-    let ex1, ey1, ex2, ey2;
-    let pdx, pdy;
-    if (dir.x === 1) {
-      ex1 = hx1 - ew - fromFront;
-      ey1 = midY - eh - Math.round(s * 0.07);
-      ex2 = ex1;
-      ey2 = midY + Math.round(s * 0.07);
-      pdx = 1;
-      pdy = 0;
-    } else if (dir.x === -1) {
-      ex1 = hx0 + fromFront;
-      ey1 = midY - eh - Math.round(s * 0.07);
-      ex2 = ex1;
-      ey2 = midY + Math.round(s * 0.07);
-      pdx = -1;
-      pdy = 0;
-    } else if (dir.y === -1) {
-      ey1 = hy0 + fromFront;
-      ex1 = midX - ew - Math.round(s * 0.07);
-      ey2 = ey1;
-      ex2 = midX + Math.round(s * 0.07);
-      pdx = 0;
-      pdy = -1;
-    } else {
-      ey1 = hy1 - eh - fromFront;
-      ex1 = midX - ew - Math.round(s * 0.07);
-      ey2 = ey1;
-      ex2 = midX + Math.round(s * 0.07);
-      pdx = 0;
-      pdy = 1;
-    }
-
-    const drawPupil = (wx, wy) => {
-      let px0 = wx + Math.round((ew - pup) / 2);
-      let py0 = wy + Math.round((eh - pup) / 2);
-      if (pdx === 1) px0 = wx + ew - pup - margin;
-      if (pdx === -1) px0 = wx + margin;
-      if (pdy === 1) py0 = wy + eh - pup - margin;
-      if (pdy === -1) py0 = wy + margin;
-      ctx.fillRect(px0, py0, pup, pup);
+    const disc = (cx, cy, r, fill) => {
+      ctx.fillStyle = fill;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
     };
 
-    ctx.fillStyle = th.eyeWhite;
-    ctx.fillRect(ex1, ey1, ew, eh);
-    ctx.fillRect(ex2, ey2, ew, eh);
-
-    ctx.fillStyle = th.eyePupil;
-    drawPupil(ex1, ey1);
-    drawPupil(ex2, ey2);
-
-    const nz = Math.max(1, Math.round(s * 0.045));
-    const nyOff = Math.round(eh / 2) - Math.floor(nz / 2);
-    ctx.fillStyle = th.nostril;
+    let c1x, c1y, c2x, c2y;
+    let ux, uy;
     if (dir.x === 1) {
-      const nx = hx1 - fromFront + Math.round(ew * 0.35);
-      ctx.fillRect(nx, ey1 + nyOff, nz, nz);
-      ctx.fillRect(nx, ey2 + nyOff, nz, nz);
+      const x = hx1 - backOff;
+      c1x = x;
+      c1y = midY - eyeSpread;
+      c2x = x;
+      c2y = midY + eyeSpread;
+      ux = 1;
+      uy = 0;
     } else if (dir.x === -1) {
-      const nx = hx0 + fromFront - Math.round(ew * 0.35) - nz;
-      ctx.fillRect(nx, ey1 + nyOff, nz, nz);
-      ctx.fillRect(nx, ey2 + nyOff, nz, nz);
+      const x = hx0 + backOff;
+      c1x = x;
+      c1y = midY - eyeSpread;
+      c2x = x;
+      c2y = midY + eyeSpread;
+      ux = -1;
+      uy = 0;
     } else if (dir.y === -1) {
-      const ny = hy0 + fromFront - Math.round(ew * 0.35) - nz;
-      ctx.fillRect(ex1 + nyOff, ny, nz, nz);
-      ctx.fillRect(ex2 + nyOff, ny, nz, nz);
+      const y = hy0 + backOff;
+      c1x = midX - eyeSpread;
+      c1y = y;
+      c2x = midX + eyeSpread;
+      c2y = y;
+      ux = 0;
+      uy = -1;
     } else {
-      const ny = hy1 - fromFront + Math.round(ew * 0.35);
-      ctx.fillRect(ex1 + nyOff, ny, nz, nz);
-      ctx.fillRect(ex2 + nyOff, ny, nz, nz);
+      const y = hy1 - backOff;
+      c1x = midX - eyeSpread;
+      c1y = y;
+      c2x = midX + eyeSpread;
+      c2y = y;
+      ux = 0;
+      uy = 1;
     }
+
+    disc(c1x, c1y, eyeR, th.eyeWhite);
+    disc(c2x, c2y, eyeR, th.eyeWhite);
+    disc(
+      c1x + ux * pupilNudge,
+      c1y + uy * pupilNudge,
+      pupilR,
+      th.eyePupil,
+    );
+    disc(
+      c2x + ux * pupilNudge,
+      c2y + uy * pupilNudge,
+      pupilR,
+      th.eyePupil,
+    );
+
+    const noseR = Math.max(0.65, s * 0.028);
+    const noseGap = s * 0.05;
+    let n1x, n1y, n2x, n2y;
+    if (dir.x === 1) {
+      const nx = hx1 - s * 0.11;
+      n1x = nx;
+      n1y = midY - noseGap;
+      n2x = nx;
+      n2y = midY + noseGap;
+    } else if (dir.x === -1) {
+      const nx = hx0 + s * 0.11;
+      n1x = nx;
+      n1y = midY - noseGap;
+      n2x = nx;
+      n2y = midY + noseGap;
+    } else if (dir.y === -1) {
+      const ny = hy0 + s * 0.11;
+      n1x = midX - noseGap;
+      n1y = ny;
+      n2x = midX + noseGap;
+      n2y = ny;
+    } else {
+      const ny = hy1 - s * 0.11;
+      n1x = midX - noseGap;
+      n1y = ny;
+      n2x = midX + noseGap;
+      n2y = ny;
+    }
+    disc(n1x, n1y, noseR, th.nostril);
+    disc(n2x, n2y, noseR, th.nostril);
   }
 
   function boot(root) {
@@ -223,8 +241,8 @@
     const foods = new Set();
     let score = 0;
     let running = false;
-    let gridW = 15;
-    let gridH = 17;
+    let gridW = 17;
+    let gridH = 15;
 
     const getTheme = () =>
       THEMES[selTheme && selTheme.value] || THEMES.normal;

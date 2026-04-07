@@ -63,7 +63,7 @@
       {
         "path": "plugins/snake",
         "name": "Snake",
-        "description": "Command plugin: !snake / !snake-game, optional natural language (like Weather). Field size, speed, themes, food count.",
+        "description": "Snake mini-game: !snake / !snake-game or natural language; configurable rectangular boards, speed, themes, and apple count.",
         "version": "1.3.0",
         "type": "command"
       },
