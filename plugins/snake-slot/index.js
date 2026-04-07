@@ -26,11 +26,9 @@ const _matchesSnakeQuery = (raw) => {
   return false;
 };
 
-const _fromBang = (qRaw, context) => {
-  if (qRaw.startsWith("!")) return true;
-  const b = String(context?.bang || "").toLowerCase();
-  return b === "snake" || b === "snake-game";
-};
+const _isBangSnake = (qRaw) => /^!\s*snake(-game)?(\s|$)/i.test(qRaw.trim());
+
+const _fromBang = (qRaw) => qRaw.trim().startsWith("!");
 
 const _normalizeSettings = (settings) => {
   const f = settings?.defaultField;
@@ -88,7 +86,7 @@ const SETTINGS_SCHEMA = [
     label: "Natural language in search",
     type: "toggle",
     description:
-      "When on, plain searches like “snake” open the game. When off, use !snake or !snake-game only (same pattern as other command-style plugins).",
+      "When on, plain searches like \"snake\" open the game in results. When off, use !snake, !snake-game, or the exact words snake / snake-game as the whole query.",
   },
   {
     key: "defaultField",
@@ -117,7 +115,7 @@ const SETTINGS_SCHEMA = [
       "synthwave",
       "catppuccin",
     ],
-    description: "Board and snake colors (Catppuccin ≈ Mocha tones).",
+    description: "Board and snake colors (Catppuccin ~ Mocha tones).",
   },
   {
     key: "foodOnField",
@@ -129,21 +127,16 @@ const SETTINGS_SCHEMA = [
   },
 ];
 
+/**
+ * Slot plugin (same shape as math-slot / tmdb-slot: export const slot, trigger is a function).
+ * Dual export: default = BangCommand so !snake uses /api/command (see commands/registry.ts).
+ */
 export const slot = {
   id: "snake-slot",
   name: "Snake",
   description:
-    "Snake mini-game: !snake / !snake-game, optional plain-search phrase. Field size, speed, themes, multi-food.",
+    "Snake mini-game in search results. Use !snake / !snake-game (command) or match the search query (optional natural language).",
   position: "at-a-glance",
-
-  trigger: "snake",
-  aliases: ["snake-game"],
-  naturalLanguagePhrases: [
-    "snake",
-    "play snake",
-    "snake game",
-    "google snake",
-  ],
 
   settingsSchema: SETTINGS_SCHEMA,
 
@@ -153,7 +146,20 @@ export const slot = {
     _applyConfigure(settings || {});
   },
 
-  async execute(args, context) {
+  trigger(query) {
+    if (!snakeEnabled) return false;
+    const q = query.trim();
+    if (!q) return false;
+    if (_isBangSnake(q)) return true;
+    if (!naturalLanguageEnabled) {
+      if (!_matchesSnakeQuery(q)) return false;
+      const only = q.toLowerCase();
+      return only === "snake" || only === "snake-game";
+    }
+    return _matchesSnakeQuery(q);
+  },
+
+  async execute(query, _context) {
     if (!snakeEnabled) {
       return {
         title: "Snake",
@@ -161,10 +167,8 @@ export const slot = {
       };
     }
 
-    const qRaw = String(
-      args ?? context?.query ?? context?.q ?? "",
-    ).trim();
-    const bang = _fromBang(qRaw, context);
+    const qRaw = query.trim();
+    const bang = _fromBang(qRaw);
 
     if (!naturalLanguageEnabled) {
       if (!bang && _matchesSnakeQuery(qRaw)) {
@@ -184,4 +188,26 @@ export const slot = {
   },
 };
 
-export default { slot };
+export default {
+  name: "Snake (!snake)",
+  description:
+    "Run !snake or !snake-game for the game. Defaults: Settings -> Plugins -> Snake (slot).",
+  trigger: "snake",
+  aliases: ["snake-game"],
+
+  settingsSchema: [],
+
+  init: _initTemplate,
+
+  configure() {},
+
+  async execute(_args, _context) {
+    if (!snakeEnabled) {
+      return {
+        title: "Snake",
+        html: `<div class="command-result"><p>Snake is disabled. Enable it under Settings -> Snake (slot).</p></div>`,
+      };
+    }
+    return { title: "Snake", html: _buildHtml() };
+  },
+};

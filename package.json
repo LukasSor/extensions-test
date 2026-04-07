@@ -64,7 +64,7 @@
         "path": "plugins/snake-slot",
         "name": "Snake",
         "description": "Snake mini-game: !snake / !snake-game (RSS-style slot). Optional plain-search phrases when enabled in settings.",
-        "version": "1.2.0",
+        "version": "1.2.1",
         "type": "slot"
       },
       {
