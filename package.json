@@ -1,8 +1,8 @@
 {
     "name": "fccview-degoog-extensions",
-    "description": "Experimental test fork — not stable: do not rely on this repo for production. Plugins, themes, engines, and transports for degoog search. Maintained by Lukasw.",
+    "description": "Experimental test fork — not stable: do not rely on this repo for production. Plugins, themes, engines, and transports for degoog search. Maintained by LukasSor.",
     "repo-image": "https://static.vecteezy.com/system/resources/previews/043/505/733/non_2x/anime-cartoon-characters-cute-cats-in-spring-pictures-happy-cute-art-animals-kittens-pets-graphics-cats-vector.jpg",
-    "author": "Lukasw",
+    "author": "LukasSor (https://github.com/LukasSor)",
     "plugins": [
       {
         "path": "plugins/weather",
@@ -123,6 +123,14 @@
         "version": "1.0.1",
         "type": "search-result-tab",
         "dependencies": ["https://github.com/fccview/fccview-degoog-extensions/engines/internet-archive"]
+      },
+      {
+        "path": "plugins/torrent-tab",
+        "name": "Torrent tab results",
+        "description": "Adds a Torrents tab using Nyaa.si (RSS). Good for anime and East Asian media; use only for content you may legally obtain.",
+        "version": "1.0.0",
+        "type": "search-result-tab",
+        "dependencies": ["https://github.com/LukasSor/extensions-test/engines/nyaa-torrent"]
       }
     ],
     "themes": [
@@ -188,6 +196,12 @@
         "path": "engines/duckduckgo-images",
         "name": "DuckDuckGo Images",
         "description": "Adds the DuckDuckGo images search engine to degoog, adding an extra ~70 images per page to the image results.",
+        "version": "1.0.0"
+      },
+      {
+        "path": "engines/nyaa-torrent",
+        "name": "Nyaa",
+        "description": "Torrent search via Nyaa.si RSS (categories include anime, manga, audio, literature, live action, pictures, software). Use only for content you may legally download or share.",
         "version": "1.0.0"
       }
     ]
