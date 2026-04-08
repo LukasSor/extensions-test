@@ -127,10 +127,14 @@
       {
         "path": "plugins/torrent-tab",
         "name": "Torrent tab results",
-        "description": "Adds a Torrents tab using Nyaa.si (RSS). Good for anime and East Asian media; use only for content you may legally obtain.",
-        "version": "1.0.0",
+        "description": "Torrents tab: The Pirate Bay (apibay), SolidTorrents API, and Nyaa (general + East Asian media). Use only for lawful content.",
+        "version": "1.1.0",
         "type": "search-result-tab",
-        "dependencies": ["https://github.com/LukasSor/extensions-test/engines/nyaa-torrent"]
+        "dependencies": [
+          "https://github.com/LukasSor/extensions-test/engines/pirate-bay-torrent",
+          "https://github.com/LukasSor/extensions-test/engines/solidtorrents-torrent",
+          "https://github.com/LukasSor/extensions-test/engines/nyaa-torrent"
+        ]
       }
     ],
     "themes": [
@@ -202,6 +206,18 @@
         "path": "engines/nyaa-torrent",
         "name": "Nyaa",
         "description": "Torrent search via Nyaa.si RSS (categories include anime, manga, audio, literature, live action, pictures, software). Use only for content you may legally download or share.",
+        "version": "1.0.0"
+      },
+      {
+        "path": "engines/pirate-bay-torrent",
+        "name": "The Pirate Bay (apibay)",
+        "description": "General torrent search via apibay.org (mirrors The Pirate Bay index). Result links open thepiratebay.org; magnet in snippet. Third-party API may lag or stop working.",
+        "version": "1.0.0"
+      },
+      {
+        "path": "engines/solidtorrents-torrent",
+        "name": "SolidTorrents",
+        "description": "General torrent search via solidtorrents.to JSON API with pagination. Result URLs are magnet links when a hash is present.",
         "version": "1.0.0"
       }
     ]
