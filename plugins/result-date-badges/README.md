@@ -2,8 +2,6 @@
 
 Slot plugin for [Degoog](https://github.com/fccview/degoog). Adds a small **date badge** next to each **web** result when a date can be inferred (snippet, title, `<time>`, or URL). Works for **every engine** that uses the normal `.result-item` list.
 
-**Store folder name:** `plugins/result-date-badges` → installs to `data/plugins/result-date-badges` (not `result-dates`), so it does not collide with an old or broken `result-dates` folder.
-
 ---
 
 ## If the Store says it cannot install
@@ -72,3 +70,11 @@ Using **`export default slot`** alone **does not work** — `default.slot` would
 ## After installing
 
 Run a normal **web** search. Badges appear only when a date is found in snippet/title/URL/time. No visible “at a glance” panel is expected; the slot exists so **`script.js`** is loaded on the results page.
+
+---
+
+## Acknowledgements
+
+The **original idea and first version** of this plugin — parsing dates from result snippets and showing them as badges on Degoog-style result cards — come from **deadrecipe**’s **Result Dates** plugin (`result-dates` in community extension packs). This fork renames the package, fixes Degoog’s slot export expectations, broadens parsing (URLs, `<time>`, more selectors), and adds install documentation. Thanks to **deadrecipe** for the initial design and implementation.
+
+- Original author profile: [github.com/deadrecipe](https://github.com/deadrecipe)

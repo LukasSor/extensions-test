@@ -1,4 +1,4 @@
-// Result dates — client-side badges on web results (all engines share result markup).
+// Client-side date badges on web results. Original approach: deadrecipe (Result Dates).
 (function () {
   "use strict";
 

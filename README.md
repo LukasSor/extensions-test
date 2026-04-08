@@ -198,7 +198,7 @@ When search results include GitHub repos or users, shows styled info above resul
 
 ### Result date badges
 
-Slot plugin: **date badge** on each **web** result (snippet, title, `<time>`, URL path). Packaged as **`plugins/result-date-badges`** so Store install does not clash with an old **`result-dates`** folder under `data/plugins/`. Details: [plugins/result-date-badges/README.md](plugins/result-date-badges/README.md).
+Slot plugin: **date badge** on each **web** result (snippet, title, `<time>`, URL path). Packaged as **`plugins/result-date-badges`** so Store install does not clash with an old **`result-dates`** folder under `data/plugins/`. Based on the original **Result Dates** plugin by **deadrecipe**; see acknowledgements in [plugins/result-date-badges/README.md](plugins/result-date-badges/README.md).
 
 </details>
 

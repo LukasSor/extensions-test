@@ -1,6 +1,7 @@
 /**
- * Result dates — at-a-glance slot that only loads client script/CSS.
- * Badges are injected into each `.result-item` by script.js (all web engines).
+ * Result date badges — at-a-glance slot (loads client script/CSS into result rows).
+ * Original “Result Dates” concept and first implementation: deadrecipe
+ * (https://github.com/deadrecipe). This version extends behaviour and packaging.
  */
 let template = "";
 let resultDatesEnabled = true;
