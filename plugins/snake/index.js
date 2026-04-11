@@ -44,7 +44,7 @@ const _buildHtml = () => {
   return (templateHtml || "").replace(/\{\{config\}\}/g, encoded);
 };
 
-export default {
+const snakeCommand = {
   name: "Snake",
   description:
     "Snake mini-game: type !snake or !snake-game, or enable Natural language (Plugins) and say e.g. play snake. Choose board size, speed, theme, and number of apples before you start.",
@@ -62,6 +62,7 @@ export default {
       key: "enabled",
       label: "Enabled",
       type: "toggle",
+      default: "true",
       description:
         "Turn off to hide Snake entirely (!snake and natural-language matches will not run).",
     },
@@ -121,6 +122,7 @@ export default {
   },
 
   async isConfigured() {
+    // Must stay truthy: Degoog omits this command from /api/commands and !help when isConfigured is false.
     return true;
   },
 
@@ -137,3 +139,7 @@ export default {
     };
   },
 };
+
+export default snakeCommand;
+/** Named export helps some loaders; default export is the canonical entry. */
+export { snakeCommand as command };
