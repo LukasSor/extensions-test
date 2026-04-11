@@ -18,7 +18,7 @@
   padding: 1.25rem 1.35rem 1.35rem;
   border-radius: 12px;
   background: var(--bg-light);
-  border: 1px solid var(--border);
+  border: none;
 }
 
 .coinflip-hero {

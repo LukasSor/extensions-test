@@ -17,7 +17,7 @@
   padding: 1.25rem 1.35rem 1.35rem;
   border-radius: 12px;
   background: var(--bg-light);
-  border: 1px solid var(--border);
+  border: none;
 }
 
 .rng-hero {
@@ -66,7 +66,7 @@
   padding: 0.75rem;
   border-radius: 12px;
   background: var(--border-light);
-  border: 1px solid var(--border);
+  border: none;
 }
 
 .rng-display-value {
