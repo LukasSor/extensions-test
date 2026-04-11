@@ -460,8 +460,7 @@
         if (old && old.length > 0 && running) {
           a = Math.min(1, (now - animStepEpoch) / Math.max(16, animStepMs));
         }
-        /** Smoothstep — ease at step start/end like Google Snake–style slides. */
-        const t = a * a * (3 - 2 * a);
+        const t = a;
 
         const neu = snake;
         let pts;

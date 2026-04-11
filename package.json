@@ -64,7 +64,7 @@
         "path": "plugins/snake",
         "name": "Snake",
         "description": "Snake: score + pause; overlay menu; full-width grid; keys/edge taps; actions styled like !coinflip / !number.",
-        "version": "1.4.7",
+        "version": "1.4.8",
         "type": "command"
       },
       {
