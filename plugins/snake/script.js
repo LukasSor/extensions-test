@@ -487,19 +487,18 @@
           if (old && a >= 1) animSnakeBefore = null;
         } else if (neu.length >= old.length) {
           /**
-           * Slide / grow: body stays on post-step grid (no per-joint lerp). Only the head
-           * lerps along the one grid edge old→new. That avoids diagonal edges between
-           * joints (which broke filled-tube inner corners). One optional Manhattan corner
-           * at the neck is handled by _expandAxisAlignedSnakePath.
+           * Slide / grow: body on post-step grid; head lerps old→new along one edge.
+           * Include the old head as its own vertex (… P, oldHead, lerp) so the last two
+           * segments stay axis-aligned on turns. Omitting oldHead made P→lerp a diagonal
+           * chord across the corner (felt “early” / rubber-band after path expansion).
            */
+          const oH = old[old.length - 1];
+          const nH = neu[neu.length - 1];
+          const oC = centerPix(oH.x, oH.y);
+          const nC = centerPix(nH.x, nH.y);
           pts = neu.slice(0, -2).map((s) => centerPix(s.x, s.y));
-          pts.push(
-            lerpPt(
-              centerPix(old[old.length - 1].x, old[old.length - 1].y),
-              centerPix(neu[neu.length - 1].x, neu[neu.length - 1].y),
-              t,
-            ),
-          );
+          pts.push(oC);
+          pts.push(lerpPt(oC, nC, t));
           if (pts.length < 2) {
             pts = neu.map((s) => centerPix(s.x, s.y));
           }
@@ -520,7 +519,16 @@
         ctx.arc(hpt.x, hpt.y, headR, 0, Math.PI * 2);
         ctx.fill();
 
-        _drawHeadFace(ctx, hpt.x, hpt.y, cell, dir, th);
+        let faceDir = dir;
+        if (old && old.length > 0 && a < 1 && neu.length > 0) {
+          const oh = old[old.length - 1];
+          const nh = neu[neu.length - 1];
+          const sdx = nh.x - oh.x;
+          const sdy = nh.y - oh.y;
+          if (sdx !== 0) faceDir = { x: sdx > 0 ? 1 : -1, y: 0 };
+          else if (sdy !== 0) faceDir = { x: 0, y: sdy > 0 ? 1 : -1 };
+        }
+        _drawHeadFace(ctx, hpt.x, hpt.y, cell, faceDir, th);
 
         if (running && old && a < 1) {
           scheduleAnimDraw();
