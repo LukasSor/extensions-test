@@ -415,8 +415,8 @@
   height: auto;
   margin-inline: auto;
   border-radius: 10px;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
+  /* Smooth strokes / round joins (pixelated mode breaks curved line art). */
+  image-rendering: auto;
   touch-action: none;
 }
 
