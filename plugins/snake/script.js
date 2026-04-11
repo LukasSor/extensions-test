@@ -408,8 +408,7 @@
         if (old && old.length > 0 && running) {
           a = Math.min(1, (now - animStepEpoch) / Math.max(16, animStepMs));
         }
-        /** Ease-out so motion settles smoothly at each step end. */
-        const t = 1 - (1 - a) * (1 - a);
+        const t = a;
 
         const neu = snake;
         let pts;
@@ -444,7 +443,8 @@
         ctx.strokeStyle = th.snake;
         ctx.lineWidth = tubeW;
         ctx.lineCap = "round";
-        ctx.lineJoin = "round";
+        ctx.lineJoin = "miter";
+        ctx.miterLimit = 8;
         ctx.stroke();
         ctx.restore();
 
