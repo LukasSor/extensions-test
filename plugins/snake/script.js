@@ -147,6 +147,38 @@
     disc(c2x + ux * pupilNudge, c2y + uy * pupilNudge, pupilR, th.eyePupil);
   }
 
+  /**
+   * Filled quads + vertex discs (same radius as half tube). Avoids canvas `stroke`
+   * round-join artefacts on the *inside* of thick 90° bends (jagged / double-cap look).
+   */
+  function _fillOrthoSnakeTube(ctx, pathPts, tubeW, fillStyle) {
+    if (!pathPts || pathPts.length === 0) return;
+    const R = tubeW * 0.5;
+    ctx.fillStyle = fillStyle;
+    for (let i = 0; i < pathPts.length - 1; i++) {
+      const p = pathPts[i];
+      const q = pathPts[i + 1];
+      const dx = q.x - p.x;
+      const dy = q.y - p.y;
+      const len = Math.hypot(dx, dy);
+      if (len < 1e-6) continue;
+      const nx = (-dy / len) * R;
+      const ny = (dx / len) * R;
+      ctx.beginPath();
+      ctx.moveTo(p.x + nx, p.y + ny);
+      ctx.lineTo(p.x - nx, p.y - ny);
+      ctx.lineTo(q.x - nx, q.y - ny);
+      ctx.lineTo(q.x + nx, q.y + ny);
+      ctx.closePath();
+      ctx.fill();
+    }
+    for (let i = 0; i < pathPts.length; i++) {
+      ctx.beginPath();
+      ctx.arc(pathPts[i].x, pathPts[i].y, R, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
   function boot(root) {
     if (root.dataset.snakeBooted === "1") return;
     root.dataset.snakeBooted = "1";
@@ -378,24 +410,13 @@
       if (snake.length > 0) {
         const cx = (x) => x * cell + cell * 0.5;
         const cy = (y) => y * cell + cell * 0.5;
-        /** Thinner than a full cell so two 90° joins one cell apart stay visually separate. */
-        const tubeW = Math.max(3, Math.min(cell * 0.64, cell - 1));
+        const tubeW = Math.max(3, Math.min(cell * 0.78, cell - 0.75));
 
         const centerPix = (gx, gy) => ({ x: cx(gx), y: cy(gy) });
-        /** Grid centers only — neighbors are axis-aligned; one round join per bend. */
         const pathPts = snake.map((s) => centerPix(s.x, s.y));
 
         ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(pathPts[0].x, pathPts[0].y);
-        for (let i = 1; i < pathPts.length; i++) {
-          ctx.lineTo(pathPts[i].x, pathPts[i].y);
-        }
-        ctx.strokeStyle = th.snake;
-        ctx.lineWidth = tubeW;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-        ctx.stroke();
+        _fillOrthoSnakeTube(ctx, pathPts, tubeW, th.snake);
         ctx.restore();
 
         const hpt = pathPts[pathPts.length - 1];
