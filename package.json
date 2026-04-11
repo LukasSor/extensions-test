@@ -63,8 +63,8 @@
       {
         "path": "plugins/snake",
         "name": "Snake",
-        "description": "Snake: score bar + D-pad above board; settings/pause/game-over in overlay on the grid (Esc); responsive board; queued turns.",
-        "version": "1.4.1",
+        "description": "Snake: score bar + D-pad; overlay menu; grid cells sized from full width; primary-style actions like !coinflip / !number.",
+        "version": "1.4.2",
         "type": "command"
       },
       {

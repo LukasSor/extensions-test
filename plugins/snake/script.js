@@ -371,15 +371,10 @@
       const wrap = canvas.parentElement;
       if (!wrap) return { ctx: null, cell: 8, pxW: 0, pxH: 0 };
       const pad = 8;
-      let availW = Math.max(64, (wrap.clientWidth || 200) - pad);
-      let availH = Math.max(64, (wrap.clientHeight || 0) - pad);
-      if (availH < 48) {
-        availH = Math.max(120, Math.floor((availW * gridH) / gridW));
-      }
-      const cellW = Math.floor(availW / gridW);
-      const cellH = Math.floor(availH / gridH);
-      let cell = Math.min(cellW, cellH);
-      cell = Math.max(4, Math.min(cell, 72));
+      const availW = Math.max(64, (wrap.clientWidth || 200) - pad);
+      /** Square cells sized from width so the grid spans ~100% of the row; height follows rows. */
+      let cell = Math.floor(availW / gridW);
+      cell = Math.max(4, cell);
       const pxW = cell * gridW;
       const pxH = cell * gridH;
       const dpr =
