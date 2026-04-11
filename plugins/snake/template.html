@@ -7,14 +7,6 @@
       </div>
       <button type="button" class="snake-toolbar-pause" data-snake-pause-btn hidden aria-label="Pause game">⏸</button>
     </div>
-    <div class="snake-dpad" data-snake-dpad hidden aria-label="Direction">
-      <button type="button" class="snake-dpad-btn" data-dir="0,-1" aria-label="Up">↑</button>
-      <div class="snake-dpad-mid">
-        <button type="button" class="snake-dpad-btn" data-dir="-1,0" aria-label="Left">←</button>
-        <button type="button" class="snake-dpad-btn" data-dir="1,0" aria-label="Right">→</button>
-      </div>
-      <button type="button" class="snake-dpad-btn" data-dir="0,1" aria-label="Down">↓</button>
-    </div>
   </div>
 
   <div class="snake-board-wrap">
@@ -25,7 +17,7 @@
       <div class="snake-overlay-card" role="dialog" aria-modal="true" aria-label="Snake menu">
         <div class="snake-panel snake-panel-pause" data-snake-panel="pause" hidden>
           <p class="snake-pause-title">Paused</p>
-          <p class="snake-pause-hint">Esc to resume · arrows / WASD / D-pad / edge taps queue turns</p>
+          <p class="snake-pause-hint">Esc to resume · arrows / WASD / edge taps queue turns</p>
           <button type="button" class="snake-btn snake-btn-primary snake-pause-resume">Resume</button>
           <button type="button" class="snake-btn snake-btn-secondary snake-pause-open-settings">Settings</button>
         </div>

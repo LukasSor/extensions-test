@@ -18,7 +18,6 @@
       chess: false,
       eyeWhite: "#ffffff",
       eyePupil: "#1e3a8a",
-      nostril: "#172554",
     },
     dark: {
       boardA: "#1f1f23",
@@ -29,7 +28,6 @@
       chess: false,
       eyeWhite: "#f4f4f5",
       eyePupil: "#3b82f6",
-      nostril: "#1d4ed8",
     },
     frozen: {
       boardA: "#0e5f8a",
@@ -40,7 +38,6 @@
       chess: false,
       eyeWhite: "#f8fafc",
       eyePupil: "#1d4ed8",
-      nostril: "#1e3a8a",
     },
     vulcan: {
       boardA: "#5c2e16",
@@ -51,7 +48,6 @@
       chess: false,
       eyeWhite: "#fff7ed",
       eyePupil: "#7c2d12",
-      nostril: "#431407",
     },
     chess: {
       boardA: "#fafafa",
@@ -62,7 +58,6 @@
       chess: true,
       eyeWhite: "#ffffff",
       eyePupil: "#1e40af",
-      nostril: "#1e3a8a",
     },
     synthwave: {
       boardA: "#3d2a5c",
@@ -73,7 +68,6 @@
       chess: false,
       eyeWhite: "#fdf4ff",
       eyePupil: "#7c3aed",
-      nostril: "#5b21b6",
     },
     catppuccin: {
       boardA: "#242438",
@@ -84,7 +78,6 @@
       chess: false,
       eyeWhite: "#dce0e8",
       eyePupil: "#89b4fa",
-      nostril: "#45475a",
     },
   };
 
@@ -100,23 +93,16 @@
 
   const _key = (x, y) => x + "," + y;
 
+  /** Eyes on the tube head (center of head cell, offset toward travel direction). */
   function _drawHeadFace(ctx, seg, cell, dir, th) {
-    const px = seg.x * cell;
-    const py = seg.y * cell;
+    const mx = seg.x * cell + cell * 0.5;
+    const my = seg.y * cell + cell * 0.5;
     const s = cell;
-    const inset = Math.max(0, Math.floor(s * 0.1));
-    const hx0 = px + inset;
-    const hy0 = py + inset;
-    const hx1 = px + s - inset;
-    const hy1 = py + s - inset;
-    const midX = (hx0 + hx1) / 2;
-    const midY = (hy0 + hy1) / 2;
-
-    const eyeR = Math.max(1.75, s * 0.11);
+    const forward = s * 0.2;
+    const eyeR = Math.max(1.5, s * 0.1);
     const pupilR = Math.max(1, eyeR * 0.4);
-    const eyeSpread = s * 0.14;
-    const backOff = s * 0.3;
-    const pupilNudge = Math.max(0.6, eyeR * 0.32);
+    const eyeSpread = s * 0.12;
+    const pupilNudge = Math.max(0.55, eyeR * 0.32);
 
     const disc = (cx, cy, r, fill) => {
       ctx.fillStyle = fill;
@@ -128,35 +114,31 @@
     let c1x, c1y, c2x, c2y;
     let ux, uy;
     if (dir.x === 1) {
-      const x = hx1 - backOff;
-      c1x = x;
-      c1y = midY - eyeSpread;
-      c2x = x;
-      c2y = midY + eyeSpread;
+      c1x = mx + forward;
+      c1y = my - eyeSpread;
+      c2x = mx + forward;
+      c2y = my + eyeSpread;
       ux = 1;
       uy = 0;
     } else if (dir.x === -1) {
-      const x = hx0 + backOff;
-      c1x = x;
-      c1y = midY - eyeSpread;
-      c2x = x;
-      c2y = midY + eyeSpread;
+      c1x = mx - forward;
+      c1y = my - eyeSpread;
+      c2x = mx - forward;
+      c2y = my + eyeSpread;
       ux = -1;
       uy = 0;
     } else if (dir.y === -1) {
-      const y = hy0 + backOff;
-      c1x = midX - eyeSpread;
-      c1y = y;
-      c2x = midX + eyeSpread;
-      c2y = y;
+      c1x = mx - eyeSpread;
+      c1y = my - forward;
+      c2x = mx + eyeSpread;
+      c2y = my - forward;
       ux = 0;
       uy = -1;
     } else {
-      const y = hy1 - backOff;
-      c1x = midX - eyeSpread;
-      c1y = y;
-      c2x = midX + eyeSpread;
-      c2y = y;
+      c1x = mx - eyeSpread;
+      c1y = my + forward;
+      c2x = mx + eyeSpread;
+      c2y = my + forward;
       ux = 0;
       uy = 1;
     }
@@ -165,37 +147,6 @@
     disc(c2x, c2y, eyeR, th.eyeWhite);
     disc(c1x + ux * pupilNudge, c1y + uy * pupilNudge, pupilR, th.eyePupil);
     disc(c2x + ux * pupilNudge, c2y + uy * pupilNudge, pupilR, th.eyePupil);
-
-    const noseR = Math.max(0.65, s * 0.028);
-    const noseGap = s * 0.05;
-    let n1x, n1y, n2x, n2y;
-    if (dir.x === 1) {
-      const nx = hx1 - s * 0.11;
-      n1x = nx;
-      n1y = midY - noseGap;
-      n2x = nx;
-      n2y = midY + noseGap;
-    } else if (dir.x === -1) {
-      const nx = hx0 + s * 0.11;
-      n1x = nx;
-      n1y = midY - noseGap;
-      n2x = nx;
-      n2y = midY + noseGap;
-    } else if (dir.y === -1) {
-      const ny = hy0 + s * 0.11;
-      n1x = midX - noseGap;
-      n1y = ny;
-      n2x = midX + noseGap;
-      n2y = ny;
-    } else {
-      const ny = hy1 - s * 0.11;
-      n1x = midX - noseGap;
-      n1y = ny;
-      n2x = midX + noseGap;
-      n2y = ny;
-    }
-    disc(n1x, n1y, noseR, th.nostril);
-    disc(n2x, n2y, noseR, th.nostril);
   }
 
   function boot(root) {
@@ -207,7 +158,6 @@
     const panelSettings = root.querySelector('[data-snake-panel="settings"]');
     const panelPause = root.querySelector('[data-snake-panel="pause"]');
     const panelDeath = root.querySelector('[data-snake-panel="death"]');
-    const dpad = root.querySelector("[data-snake-dpad]");
     const btnToolbarPause = root.querySelector("[data-snake-pause-btn]");
     const btnStart = root.querySelector(".snake-start");
     const btnSettingsBack = root.querySelector(".snake-settings-back");
@@ -337,14 +287,12 @@
     const applyUi = () => {
       if (uiMode === "playing") {
         overlay.hidden = true;
-        if (dpad) dpad.hidden = false;
         if (btnToolbarPause) btnToolbarPause.hidden = false;
         root.classList.add("snake-slot--playing");
         return;
       }
 
       overlay.hidden = false;
-      if (dpad) dpad.hidden = true;
       if (btnToolbarPause) btnToolbarPause.hidden = true;
       root.classList.remove("snake-slot--playing");
 
@@ -424,21 +372,31 @@
         ctx.fill();
       }
 
-      const headIdx = snake.length - 1;
-      for (let i = 0; i < snake.length; i++) {
-        const seg = snake[i];
-        const isHead = i === headIdx;
-        ctx.fillStyle = isHead ? th.head : th.snake;
-        const inset = Math.max(0, Math.floor(cell * 0.08));
-        ctx.fillRect(
-          seg.x * cell + inset,
-          seg.y * cell + inset,
-          cell - inset * 2,
-          cell - inset * 2,
-        );
-        if (isHead) {
-          _drawHeadFace(ctx, seg, cell, dir, th);
+      if (snake.length > 0) {
+        const cx = (x) => x * cell + cell * 0.5;
+        const cy = (y) => y * cell + cell * 0.5;
+        const tubeW = Math.max(2.5, cell * 0.4);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(cx(snake[0].x), cy(snake[0].y));
+        for (let i = 1; i < snake.length; i++) {
+          ctx.lineTo(cx(snake[i].x), cy(snake[i].y));
         }
+        ctx.strokeStyle = th.snake;
+        ctx.lineWidth = tubeW;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.stroke();
+        ctx.restore();
+
+        const head = snake[snake.length - 1];
+        ctx.fillStyle = th.head;
+        ctx.beginPath();
+        ctx.arc(cx(head.x), cy(head.y), tubeW * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        _drawHeadFace(ctx, head, cell, dir, th);
       }
     };
 
@@ -641,18 +599,6 @@
     canvas.addEventListener("click", () => {
       if (running) canvas.focus();
     });
-
-    if (dpad) {
-      dpad.querySelectorAll("[data-dir]").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const raw = btn.getAttribute("data-dir");
-          if (!raw) return;
-          const [xs, ys] = raw.split(",").map(Number);
-          queueDir({ x: xs, y: ys });
-          if (running) canvas.focus();
-        });
-      });
-    }
 
     const EDGE = 0.22;
     canvas.addEventListener("pointerdown", (e) => {

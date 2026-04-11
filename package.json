@@ -63,8 +63,8 @@
       {
         "path": "plugins/snake",
         "name": "Snake",
-        "description": "Snake: score bar + D-pad; overlay menu; grid cells sized from full width; primary-style actions like !coinflip / !number.",
-        "version": "1.4.2",
+        "description": "Snake: score + pause; overlay menu; full-width grid; keys/edge taps; actions styled like !coinflip / !number.",
+        "version": "1.4.4",
         "type": "command"
       },
       {

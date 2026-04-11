@@ -306,45 +306,6 @@
   letter-spacing: -0.02em;
 }
 
-/* D-pad: in toolbar above the board, never over the canvas */
-.snake-dpad {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.2rem;
-  padding: 0.25rem 0;
-}
-
-.snake-dpad[hidden] {
-  display: none !important;
-}
-
-.snake-dpad-mid {
-  display: flex;
-  gap: 2.5rem;
-  align-items: center;
-}
-
-.snake-dpad-btn {
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 10px;
-  border: 1px solid var(--border-light);
-  background: var(--bg-light);
-  color: var(--text-primary);
-  font-size: 1.25rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.snake-dpad-btn:hover {
-  background: color-mix(in srgb, var(--bg-light) 85%, var(--accent, #4f46e5) 15%);
-}
-
-.snake-dpad-btn:active {
-  transform: scale(0.96);
-}
-
 .snake-board-wrap {
   position: relative;
   flex: 1;
