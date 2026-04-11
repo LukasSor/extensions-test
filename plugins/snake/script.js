@@ -443,8 +443,7 @@
         ctx.strokeStyle = th.snake;
         ctx.lineWidth = tubeW;
         ctx.lineCap = "round";
-        ctx.lineJoin = "miter";
-        ctx.miterLimit = 8;
+        ctx.lineJoin = "round";
         ctx.stroke();
         ctx.restore();
 
