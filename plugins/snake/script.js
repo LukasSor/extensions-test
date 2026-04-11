@@ -147,23 +147,6 @@
     disc(c2x + ux * pupilNudge, c2y + uy * pupilNudge, pupilR, th.eyePupil);
   }
 
-  /** Pull stroke end back so the round line-cap meets the head disc (less overlap bulge). */
-  function _shortenPathEndForStroke(pts, inset) {
-    if (!pts || pts.length < 2 || inset <= 0) return pts ? pts.map((p) => ({ x: p.x, y: p.y })) : [];
-    const A = pts[pts.length - 2];
-    const B = pts[pts.length - 1];
-    const dx = B.x - A.x;
-    const dy = B.y - A.y;
-    const len = Math.hypot(dx, dy);
-    const minLen = inset + 0.5;
-    if (len <= minLen) return pts.map((p) => ({ x: p.x, y: p.y }));
-    const ux = dx / len;
-    const uy = dy / len;
-    const out = pts.slice(0, -1).map((p) => ({ x: p.x, y: p.y }));
-    out.push({ x: B.x - ux * inset, y: B.y - uy * inset });
-    return out;
-  }
-
   function boot(root) {
     if (root.dataset.snakeBooted === "1") return;
     root.dataset.snakeBooted = "1";
@@ -395,18 +378,18 @@
       if (snake.length > 0) {
         const cx = (x) => x * cell + cell * 0.5;
         const cy = (y) => y * cell + cell * 0.5;
-        const tubeW = Math.max(3, Math.min(cell * 0.9, cell - 0.5));
+        /** Thinner than a full cell so two 90° joins one cell apart stay visually separate. */
+        const tubeW = Math.max(3, Math.min(cell * 0.64, cell - 1));
 
         const centerPix = (gx, gy) => ({ x: cx(gx), y: cy(gy) });
-        /** Grid centers only — neighbors are always axis-aligned; round joins stay even. */
+        /** Grid centers only — neighbors are axis-aligned; one round join per bend. */
         const pathPts = snake.map((s) => centerPix(s.x, s.y));
-        const strokePts = _shortenPathEndForStroke(pathPts, tubeW * 0.5);
 
         ctx.save();
         ctx.beginPath();
-        ctx.moveTo(strokePts[0].x, strokePts[0].y);
-        for (let i = 1; i < strokePts.length; i++) {
-          ctx.lineTo(strokePts[i].x, strokePts[i].y);
+        ctx.moveTo(pathPts[0].x, pathPts[0].y);
+        for (let i = 1; i < pathPts.length; i++) {
+          ctx.lineTo(pathPts[i].x, pathPts[i].y);
         }
         ctx.strokeStyle = th.snake;
         ctx.lineWidth = tubeW;
@@ -416,7 +399,7 @@
         ctx.restore();
 
         const hpt = pathPts[pathPts.length - 1];
-        const headR = Math.min(tubeW * 0.54, cell * 0.46);
+        const headR = tubeW * 0.5;
         ctx.fillStyle = th.head;
         ctx.beginPath();
         ctx.arc(hpt.x, hpt.y, headR, 0, Math.PI * 2);
