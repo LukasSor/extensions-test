@@ -93,10 +93,8 @@
 
   const _key = (x, y) => x + "," + y;
 
-  /** Eyes on the tube head (center of head cell, offset toward travel direction). */
-  function _drawHeadFace(ctx, seg, cell, dir, th) {
-    const mx = seg.x * cell + cell * 0.5;
-    const my = seg.y * cell + cell * 0.5;
+  /** Eyes on the tube head (`mx`,`my` = head center in pixels, offset toward travel direction). */
+  function _drawHeadFace(ctx, mx, my, cell, dir, th) {
     const s = cell;
     const forward = s * 0.2;
     const eyeR = Math.max(1.5, s * 0.1);
@@ -253,6 +251,27 @@
     let pauseSub = "main";
 
     let timer = null;
+    let animRafId = null;
+    /** Grid snapshot before last `tick` move (for smooth interpolation). */
+    let animSnakeBefore = null;
+    let animStepEpoch = 0;
+    let animStepMs = SPEED_MS.snake;
+
+    const cancelAnimRaf = () => {
+      if (animRafId != null) {
+        cancelAnimationFrame(animRafId);
+        animRafId = null;
+      }
+    };
+
+    const scheduleAnimDraw = () => {
+      if (animRafId != null) return;
+      animRafId = requestAnimationFrame(() => {
+        animRafId = null;
+        draw();
+      });
+    };
+
     let snake = [];
     let dir = { x: 1, y: 0 };
     /** Queued directions (max DIR_QUEUE_MAX); each tick consumes one if legal. */
@@ -375,13 +394,52 @@
       if (snake.length > 0) {
         const cx = (x) => x * cell + cell * 0.5;
         const cy = (y) => y * cell + cell * 0.5;
-        const tubeW = Math.max(2.5, cell * 0.4);
+        const tubeW = Math.max(3, Math.min(cell * 0.9, cell - 0.5));
+
+        const centerPix = (gx, gy) => ({ x: cx(gx), y: cy(gy) });
+        const lerpPt = (u, v, t) => ({
+          x: u.x + (v.x - u.x) * t,
+          y: u.y + (v.y - u.y) * t,
+        });
+
+        const now = typeof performance !== "undefined" ? performance.now() : 0;
+        const old = animSnakeBefore;
+        let a = 1;
+        if (old && old.length > 0 && running) {
+          a = Math.min(1, (now - animStepEpoch) / Math.max(16, animStepMs));
+        }
+        /** Ease-out so motion settles smoothly at each step end. */
+        const t = 1 - (1 - a) * (1 - a);
+
+        const neu = snake;
+        let pts;
+        if (!old || old.length === 0 || a >= 1) {
+          pts = neu.map((s) => centerPix(s.x, s.y));
+          if (old && a >= 1) animSnakeBefore = null;
+        } else if (neu.length > old.length) {
+          pts = [];
+          for (let j = 0; j < neu.length - 1; j++) {
+            pts.push(centerPix(neu[j].x, neu[j].y));
+          }
+          const hOld = old[old.length - 1];
+          const hNew = neu[neu.length - 1];
+          pts.push(lerpPt(centerPix(hOld.x, hOld.y), centerPix(hNew.x, hNew.y), t));
+        } else if (neu.length === old.length) {
+          pts = [];
+          for (let j = 0; j < neu.length; j++) {
+            pts.push(
+              lerpPt(centerPix(old[j].x, old[j].y), centerPix(neu[j].x, neu[j].y), t),
+            );
+          }
+        } else {
+          pts = neu.map((s) => centerPix(s.x, s.y));
+        }
 
         ctx.save();
         ctx.beginPath();
-        ctx.moveTo(cx(snake[0].x), cy(snake[0].y));
-        for (let i = 1; i < snake.length; i++) {
-          ctx.lineTo(cx(snake[i].x), cy(snake[i].y));
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) {
+          ctx.lineTo(pts[i].x, pts[i].y);
         }
         ctx.strokeStyle = th.snake;
         ctx.lineWidth = tubeW;
@@ -390,13 +448,17 @@
         ctx.stroke();
         ctx.restore();
 
-        const head = snake[snake.length - 1];
+        const hpt = pts[pts.length - 1];
         ctx.fillStyle = th.head;
         ctx.beginPath();
-        ctx.arc(cx(head.x), cy(head.y), tubeW * 0.5, 0, Math.PI * 2);
+        ctx.arc(hpt.x, hpt.y, tubeW * 0.5, 0, Math.PI * 2);
         ctx.fill();
 
-        _drawHeadFace(ctx, head, cell, dir, th);
+        _drawHeadFace(ctx, hpt.x, hpt.y, cell, dir, th);
+
+        if (running && old && a < 1) {
+          scheduleAnimDraw();
+        }
       }
     };
 
@@ -423,6 +485,8 @@
     };
 
     const resetGame = () => {
+      cancelAnimRaf();
+      animSnakeBefore = null;
       const dim = FIELD_DIM[fieldKey] || FIELD_DIM.medium;
       gridW = dim.w;
       gridH = dim.h;
@@ -445,6 +509,8 @@
 
     const gameOver = (msg) => {
       running = false;
+      cancelAnimRaf();
+      animSnakeBefore = null;
       if (timer != null) {
         clearInterval(timer);
         timer = null;
@@ -457,6 +523,8 @@
     const pauseGame = () => {
       if (!running || uiMode !== "playing") return;
       running = false;
+      cancelAnimRaf();
+      animSnakeBefore = null;
       pauseSub = "main";
       if (timer != null) {
         clearInterval(timer);
@@ -481,6 +549,7 @@
 
     const tick = () => {
       if (!running) return;
+      const prevSnake = snake.map((s) => ({ x: s.x, y: s.y }));
       if (dirQueue.length > 0) {
         const nd = dirQueue.shift();
         if (!(nd.x === -dir.x && nd.y === -dir.y)) {
@@ -513,6 +582,9 @@
       } else {
         snake.shift();
       }
+      animSnakeBefore = prevSnake;
+      animStepMs = SPEED_MS[speedKey] || SPEED_MS.snake;
+      animStepEpoch = typeof performance !== "undefined" ? performance.now() : 0;
       draw();
     };
 
