@@ -485,20 +485,23 @@
         if (!old || old.length === 0 || a >= 1) {
           pts = neu.map((s) => centerPix(s.x, s.y));
           if (old && a >= 1) animSnakeBefore = null;
-        } else if (neu.length > old.length) {
-          pts = [];
-          for (let j = 0; j < neu.length - 1; j++) {
-            pts.push(centerPix(neu[j].x, neu[j].y));
-          }
-          const hOld = old[old.length - 1];
-          const hNew = neu[neu.length - 1];
-          pts.push(lerpPt(centerPix(hOld.x, hOld.y), centerPix(hNew.x, hNew.y), t));
-        } else if (neu.length === old.length) {
-          pts = [];
-          for (let j = 0; j < neu.length; j++) {
-            pts.push(
-              lerpPt(centerPix(old[j].x, old[j].y), centerPix(neu[j].x, neu[j].y), t),
-            );
+        } else if (neu.length >= old.length) {
+          /**
+           * Slide / grow: body stays on post-step grid (no per-joint lerp). Only the head
+           * lerps along the one grid edge old→new. That avoids diagonal edges between
+           * joints (which broke filled-tube inner corners). One optional Manhattan corner
+           * at the neck is handled by _expandAxisAlignedSnakePath.
+           */
+          pts = neu.slice(0, -2).map((s) => centerPix(s.x, s.y));
+          pts.push(
+            lerpPt(
+              centerPix(old[old.length - 1].x, old[old.length - 1].y),
+              centerPix(neu[neu.length - 1].x, neu[neu.length - 1].y),
+              t,
+            ),
+          );
+          if (pts.length < 2) {
+            pts = neu.map((s) => centerPix(s.x, s.y));
           }
         } else {
           pts = neu.map((s) => centerPix(s.x, s.y));
