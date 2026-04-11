@@ -47,7 +47,7 @@ const _buildHtml = () => {
 const snakeCommand = {
   name: "Snake",
   description:
-    "Snake: !snake / !snake-game or natural language. Icon rows for board, speed, food, theme; D-pad above the grid; board fills space. Queued turns (keys, pad, edge taps) apply on later steps.",
+    "Snake: !snake / !snake-game or natural language. Thin score bar + D-pad above the board; settings, pause, and game-over sit in an in-board overlay (Esc / pause). Responsive grid; queued turns.",
   trigger: "snake",
   aliases: ["snake-game"],
   naturalLanguagePhrases: [

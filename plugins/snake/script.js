@@ -203,16 +203,22 @@
     root.dataset.snakeBooted = "1";
 
     const canvas = root.querySelector(".snake-canvas");
+    const overlay = root.querySelector("[data-snake-overlay]");
     const panelSettings = root.querySelector('[data-snake-panel="settings"]');
+    const panelPause = root.querySelector('[data-snake-panel="pause"]');
     const panelDeath = root.querySelector('[data-snake-panel="death"]');
     const dpad = root.querySelector("[data-snake-dpad]");
+    const btnToolbarPause = root.querySelector("[data-snake-pause-btn]");
     const btnStart = root.querySelector(".snake-start");
+    const btnSettingsBack = root.querySelector(".snake-settings-back");
+    const btnPauseResume = root.querySelector(".snake-pause-resume");
+    const btnPauseOpenSettings = root.querySelector(".snake-pause-open-settings");
     const btnDeathRestart = root.querySelector(".snake-death-restart");
     const btnDeathSettings = root.querySelector(".snake-death-settings");
     const elDeathMsg = root.querySelector(".snake-death-msg");
     const elScore = root.querySelector(".snake-score");
 
-    if (!canvas || !btnStart || !panelSettings || !panelDeath) return;
+    if (!canvas || !btnStart || !panelSettings || !panelDeath || !overlay || !panelPause) return;
 
     const cfg = _parseConfig(root);
     const FIELD_KEYS = new Set(["small", "medium", "large"]);
@@ -255,7 +261,7 @@
         if (v && FIELD_KEYS.has(v)) {
           fieldKey = v;
           syncChips();
-          if (!running) resetGame();
+          if (!running && uiMode !== "paused") resetGame();
         }
       });
     });
@@ -274,6 +280,7 @@
         if (v && FOOD_KEYS.has(v)) {
           foodKey = v;
           syncChips();
+          if (!running && uiMode !== "paused") resetGame();
         }
       });
     });
@@ -289,6 +296,11 @@
     });
 
     syncChips();
+
+    /** playing | menu | death | paused */
+    let uiMode = "menu";
+    /** When paused: main strip vs settings sheet */
+    let pauseSub = "main";
 
     let timer = null;
     let snake = [];
@@ -322,23 +334,37 @@
       dirQueue.push(nd);
     };
 
-    const setView = (v) => {
-      if (v === "playing") {
-        panelSettings.hidden = true;
-        panelDeath.hidden = true;
+    const applyUi = () => {
+      if (uiMode === "playing") {
+        overlay.hidden = true;
         if (dpad) dpad.hidden = false;
+        if (btnToolbarPause) btnToolbarPause.hidden = false;
         root.classList.add("snake-slot--playing");
-      } else if (v === "death") {
-        panelSettings.hidden = true;
-        panelDeath.hidden = false;
-        if (dpad) dpad.hidden = true;
-        root.classList.remove("snake-slot--playing");
-      } else {
-        panelSettings.hidden = false;
-        panelDeath.hidden = true;
-        if (dpad) dpad.hidden = true;
-        root.classList.remove("snake-slot--playing");
+        return;
       }
+
+      overlay.hidden = false;
+      if (dpad) dpad.hidden = true;
+      if (btnToolbarPause) btnToolbarPause.hidden = true;
+      root.classList.remove("snake-slot--playing");
+
+      const deathOn = uiMode === "death";
+      const pauseMain = uiMode === "paused" && pauseSub === "main";
+      const pauseSettings = uiMode === "paused" && pauseSub === "settings";
+      const menuOn = uiMode === "menu";
+
+      panelDeath.hidden = !deathOn;
+      panelPause.hidden = !pauseMain;
+      panelSettings.hidden = !(menuOn || pauseSettings);
+
+      if (btnSettingsBack) btnSettingsBack.hidden = !pauseSettings;
+      if (btnStart) btnStart.hidden = !menuOn;
+    };
+
+    const setView = (v) => {
+      uiMode = v;
+      if (v !== "paused") pauseSub = "main";
+      applyUi();
     };
 
     const resizeCanvas = () => {
@@ -475,6 +501,31 @@
       draw();
     };
 
+    const pauseGame = () => {
+      if (!running || uiMode !== "playing") return;
+      running = false;
+      pauseSub = "main";
+      if (timer != null) {
+        clearInterval(timer);
+        timer = null;
+      }
+      setView("paused");
+      draw();
+      if (btnPauseResume) {
+        queueMicrotask(() => btnPauseResume.focus());
+      }
+    };
+
+    const resumeGame = () => {
+      if (uiMode !== "paused") return;
+      running = true;
+      setView("playing");
+      const spd = SPEED_MS[speedKey] || SPEED_MS.snake;
+      timer = setInterval(tick, spd);
+      canvas.focus();
+      draw();
+    };
+
     const tick = () => {
       if (!running) return;
       if (dirQueue.length > 0) {
@@ -529,9 +580,30 @@
     btnStart.addEventListener("click", startGame);
     btnDeathRestart.addEventListener("click", startGame);
     btnDeathSettings.addEventListener("click", () => {
-      setView("settings");
+      setView("menu");
       draw();
     });
+
+    if (btnToolbarPause) {
+      btnToolbarPause.addEventListener("click", () => pauseGame());
+    }
+    if (btnPauseResume) {
+      btnPauseResume.addEventListener("click", () => resumeGame());
+    }
+    if (btnPauseOpenSettings) {
+      btnPauseOpenSettings.addEventListener("click", () => {
+        pauseSub = "settings";
+        applyUi();
+        if (btnSettingsBack) queueMicrotask(() => btnSettingsBack.focus());
+      });
+    }
+    if (btnSettingsBack) {
+      btnSettingsBack.addEventListener("click", () => {
+        pauseSub = "main";
+        applyUi();
+        if (btnPauseResume) queueMicrotask(() => btnPauseResume.focus());
+      });
+    }
 
     const _dirFromKey = (key) => {
       if (key === "ArrowUp" || key === "w" || key === "W") return { x: 0, y: -1 };
@@ -541,14 +613,36 @@
       return null;
     };
 
-    const onKey = (e) => {
+    const onCanvasKey = (e) => {
       const nd = _dirFromKey(e.key);
       if (nd) {
         e.preventDefault();
         queueDir(nd);
       }
     };
-    canvas.addEventListener("keydown", onKey);
+
+    const onEscapeKey = (e) => {
+      if (e.key !== "Escape") return;
+      if (!root.contains(e.target)) return;
+      if (uiMode === "playing") {
+        e.preventDefault();
+        e.stopPropagation();
+        pauseGame();
+      } else if (uiMode === "paused") {
+        e.preventDefault();
+        e.stopPropagation();
+        if (pauseSub === "settings") {
+          pauseSub = "main";
+          applyUi();
+          if (btnPauseResume) btnPauseResume.focus();
+        } else {
+          resumeGame();
+        }
+      }
+    };
+
+    canvas.addEventListener("keydown", onCanvasKey);
+    root.addEventListener("keydown", onEscapeKey, true);
     canvas.addEventListener("click", () => {
       if (running) canvas.focus();
     });
@@ -591,7 +685,7 @@
     }
     window.addEventListener("resize", () => draw());
 
-    setView("settings");
+    setView("menu");
     resetGame();
   }
 
