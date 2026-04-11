@@ -2,25 +2,7 @@
 
 **Test / experimental pack — not stable.** This repository is for trying changes and plugins; things may break, disappear, or change without notice. Prefer the upstream **fccview** extensions if you need something dependable for day-to-day use.
 
-Maintainer: **[LukasSor](https://github.com/LukasSor)**.
-
----
-
-## Installing this pack in Degoog
-
-This repo is a **Degoog Store** bundle, not an npm package. You do **not** run `npm install` inside this folder to get plugins into Degoog.
-
-1. **Host the git repo** somewhere your Degoog server can clone (usually **GitHub**, GitLab, or similar). A copy that only lives on your PC or Nextcloud is not enough until you **push** it to a remote.
-2. In Degoog: **Settings → Store → Add** (or equivalent).
-3. Paste the **clone URL**, e.g. `https://github.com/YOUR_USER/YOUR_REPO.git` (must be `https` and usually ends in `.git`).
-4. After the repo is added, open the **Store** tab, pick this pack, and **Install** the plugins/themes/engines you want. Adding the repo alone does not install everything automatically.
-5. For **updates**: use **Refresh** on the repo in Store, then reinstall or rely on Degoog’s update behaviour for installed items.
-
-**If it still fails:** confirm the server can reach git (no firewall blocking GitHub), the repo is **public** (or the server has credentials for private repos), and the default branch contains a valid root **`package.json`** with matching `plugins/...` paths. See [Degoog Store docs](https://fccview.github.io/degoog/store.html).
-
-Official pack (for comparison): `https://github.com/fccview/fccview-degoog-extensions.git`
-
----
+Maintainer: **[LukasSor](https://github.com/LukasSor)**
 
 <details>
 <summary>Plugins</summary>

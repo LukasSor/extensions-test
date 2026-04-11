@@ -147,6 +147,41 @@
     disc(c2x + ux * pupilNudge, c2y + uy * pupilNudge, pupilR, th.eyePupil);
   }
 
+  /**
+   * Interpolated joints can sit on a diagonal between cell centers; canvas round-join
+   * then alternates between sharp and smooth corners. Split each diagonal into two
+   * axis-aligned legs (Manhattan) using the incoming edge so bends stay quarter-rounds.
+   */
+  function _expandAxisAlignedSnakePath(pts, cell) {
+    if (!pts || pts.length < 2) return pts ? pts.map((p) => ({ x: p.x, y: p.y })) : [];
+    const eps = Math.max(0.2, cell * 0.04);
+    const axis = (a, b) => Math.abs(b.x - a.x) < eps || Math.abs(b.y - a.y) < eps;
+    const out = [{ x: pts[0].x, y: pts[0].y }];
+    for (let i = 1; i < pts.length; i++) {
+      const A = out[out.length - 1];
+      const B = pts[i];
+      if (axis(A, B)) {
+        if (Math.hypot(B.x - A.x, B.y - A.y) > eps) out.push({ x: B.x, y: B.y });
+        continue;
+      }
+      const w1 = { x: A.x, y: B.y };
+      const w2 = { x: B.x, y: A.y };
+      let w = w1;
+      if (out.length >= 2) {
+        const P = out[out.length - 2];
+        const dx = A.x - P.x;
+        const dy = A.y - P.y;
+        if (Math.abs(dx) >= Math.abs(dy)) w = w1;
+        else w = w2;
+      } else {
+        w = Math.abs(B.y - A.y) >= Math.abs(B.x - A.x) ? w1 : w2;
+      }
+      if (Math.hypot(w.x - A.x, w.y - A.y) > eps) out.push({ x: w.x, y: w.y });
+      if (Math.hypot(B.x - w.x, B.y - w.y) > eps) out.push({ x: B.x, y: B.y });
+    }
+    return out;
+  }
+
   function boot(root) {
     if (root.dataset.snakeBooted === "1") return;
     root.dataset.snakeBooted = "1";
@@ -434,11 +469,13 @@
           pts = neu.map((s) => centerPix(s.x, s.y));
         }
 
+        const pathPts = _expandAxisAlignedSnakePath(pts, cell);
+
         ctx.save();
         ctx.beginPath();
-        ctx.moveTo(pts[0].x, pts[0].y);
-        for (let i = 1; i < pts.length; i++) {
-          ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.moveTo(pathPts[0].x, pathPts[0].y);
+        for (let i = 1; i < pathPts.length; i++) {
+          ctx.lineTo(pathPts[i].x, pathPts[i].y);
         }
         ctx.strokeStyle = th.snake;
         ctx.lineWidth = tubeW;
@@ -447,7 +484,7 @@
         ctx.stroke();
         ctx.restore();
 
-        const hpt = pts[pts.length - 1];
+        const hpt = pathPts[pathPts.length - 1];
         ctx.fillStyle = th.head;
         ctx.beginPath();
         ctx.arc(hpt.x, hpt.y, tubeW * 0.5, 0, Math.PI * 2);
