@@ -71,7 +71,7 @@
         "path": "plugins/coinflip",
         "name": "Coin flip",
         "description": "3D coin flip card: !coinflip / !flip with spin animation, result under the coin, spin again in place.",
-        "version": "1.0.1",
+        "version": "1.1.0",
         "type": "command"
       },
       {

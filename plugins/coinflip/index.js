@@ -5,7 +5,7 @@ const _buildHtml = () => templateHtml || "";
 export default {
   name: "Coin flip",
   description:
-    "Flip a coin: use !coinflip or !flip. Card UI with a 3D spin; result shows under the coin. Spin again without leaving the page.",
+    "Flip a coin: use !coinflip or !flip. 3D spin with illustrated SVG coin (portrait on heads, numeral on tails). Spin again without leaving the page.",
   trigger: "coinflip",
   aliases: ["flip"],
   naturalLanguagePhrases: [
