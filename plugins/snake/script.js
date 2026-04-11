@@ -6,6 +6,7 @@
     large: { w: 24, h: 21 },
   };
   const SPEED_MS = { turtle: 220, rabbit: 95, snake: 145 };
+  const DIR_QUEUE_MAX = 3;
 
   const THEMES = {
     normal: {
@@ -113,9 +114,7 @@
 
     const eyeR = Math.max(1.75, s * 0.11);
     const pupilR = Math.max(1, eyeR * 0.4);
-    /** Half-distance between the two eye centers (perpendicular to travel). */
     const eyeSpread = s * 0.14;
-    /** How far the eye column/row sits back from the muzzle (fraction of cell). */
     const backOff = s * 0.3;
     const pupilNudge = Math.max(0.6, eyeR * 0.32);
 
@@ -164,18 +163,8 @@
 
     disc(c1x, c1y, eyeR, th.eyeWhite);
     disc(c2x, c2y, eyeR, th.eyeWhite);
-    disc(
-      c1x + ux * pupilNudge,
-      c1y + uy * pupilNudge,
-      pupilR,
-      th.eyePupil,
-    );
-    disc(
-      c2x + ux * pupilNudge,
-      c2y + uy * pupilNudge,
-      pupilR,
-      th.eyePupil,
-    );
+    disc(c1x + ux * pupilNudge, c1y + uy * pupilNudge, pupilR, th.eyePupil);
+    disc(c2x + ux * pupilNudge, c2y + uy * pupilNudge, pupilR, th.eyePupil);
 
     const noseR = Math.max(0.65, s * 0.028);
     const noseGap = s * 0.05;
@@ -216,39 +205,106 @@
     const canvas = root.querySelector(".snake-canvas");
     const panelSettings = root.querySelector('[data-snake-panel="settings"]');
     const panelDeath = root.querySelector('[data-snake-panel="death"]');
+    const dpad = root.querySelector("[data-snake-dpad]");
     const btnStart = root.querySelector(".snake-start");
     const btnDeathRestart = root.querySelector(".snake-death-restart");
     const btnDeathSettings = root.querySelector(".snake-death-settings");
     const elDeathMsg = root.querySelector(".snake-death-msg");
-    const selField = root.querySelector(".snake-select-field");
-    const selSpeed = root.querySelector(".snake-select-speed");
-    const selTheme = root.querySelector(".snake-select-theme");
-    const selFood = root.querySelector(".snake-select-food");
     const elScore = root.querySelector(".snake-score");
 
     if (!canvas || !btnStart || !panelSettings || !panelDeath) return;
 
     const cfg = _parseConfig(root);
-    if (cfg.field && selField) selField.value = cfg.field;
-    if (cfg.speed && selSpeed) selSpeed.value = cfg.speed;
-    if (cfg.theme && selTheme) selTheme.value = cfg.theme;
-    if (cfg.food && selFood) selFood.value = String(cfg.food);
+    const FIELD_KEYS = new Set(["small", "medium", "large"]);
+    const SPEED_KEYS = new Set(["turtle", "rabbit", "snake"]);
+    const THEME_KEYS = new Set(Object.keys(THEMES));
+    const FOOD_KEYS = new Set(["1", "3", "5"]);
+
+    let fieldKey = FIELD_KEYS.has(cfg.field) ? cfg.field : "medium";
+    let speedKey = SPEED_KEYS.has(cfg.speed) ? cfg.speed : "snake";
+    let themeKey = THEME_KEYS.has(cfg.theme) ? cfg.theme : "normal";
+    let foodKey = FOOD_KEYS.has(String(cfg.food)) ? String(cfg.food) : "1";
+
+    const chipsField = root.querySelectorAll(".snake-chip-field");
+    const chipsSpeed = root.querySelectorAll(".snake-chip-speed");
+    const chipsFood = root.querySelectorAll(".snake-chip-food");
+    const chipsTheme = root.querySelectorAll(".snake-chip-theme");
+
+    const syncChips = () => {
+      chipsField.forEach((b) => {
+        const v = b.getAttribute("data-snake-field");
+        b.setAttribute("aria-pressed", v === fieldKey ? "true" : "false");
+      });
+      chipsSpeed.forEach((b) => {
+        const v = b.getAttribute("data-snake-speed");
+        b.setAttribute("aria-pressed", v === speedKey ? "true" : "false");
+      });
+      chipsFood.forEach((b) => {
+        const v = b.getAttribute("data-snake-food");
+        b.setAttribute("aria-pressed", v === foodKey ? "true" : "false");
+      });
+      chipsTheme.forEach((b) => {
+        const v = b.getAttribute("data-snake-theme");
+        b.setAttribute("aria-pressed", v === themeKey ? "true" : "false");
+      });
+    };
+
+    chipsField.forEach((b) => {
+      b.addEventListener("click", () => {
+        const v = b.getAttribute("data-snake-field");
+        if (v && FIELD_KEYS.has(v)) {
+          fieldKey = v;
+          syncChips();
+          if (!running) resetGame();
+        }
+      });
+    });
+    chipsSpeed.forEach((b) => {
+      b.addEventListener("click", () => {
+        const v = b.getAttribute("data-snake-speed");
+        if (v && SPEED_KEYS.has(v)) {
+          speedKey = v;
+          syncChips();
+        }
+      });
+    });
+    chipsFood.forEach((b) => {
+      b.addEventListener("click", () => {
+        const v = b.getAttribute("data-snake-food");
+        if (v && FOOD_KEYS.has(v)) {
+          foodKey = v;
+          syncChips();
+        }
+      });
+    });
+    chipsTheme.forEach((b) => {
+      b.addEventListener("click", () => {
+        const v = b.getAttribute("data-snake-theme");
+        if (v && THEME_KEYS.has(v)) {
+          themeKey = v;
+          syncChips();
+          if (!running) draw();
+        }
+      });
+    });
+
+    syncChips();
 
     let timer = null;
     let snake = [];
     let dir = { x: 1, y: 0 };
-    let pendingDir = null;
+    /** Queued directions (max DIR_QUEUE_MAX); each tick consumes one if legal. */
+    const dirQueue = [];
     const foods = new Set();
     let score = 0;
     let running = false;
     let gridW = 17;
     let gridH = 15;
 
-    const getTheme = () =>
-      THEMES[selTheme && selTheme.value] || THEMES.normal;
+    const getTheme = () => THEMES[themeKey] || THEMES.normal;
 
     const getFoodTarget = () => {
-      const v = selFood ? parseInt(selFood.value, 10) : 1;
+      const v = parseInt(foodKey, 10);
       return v === 3 || v === 5 ? v : 1;
     };
 
@@ -258,35 +314,50 @@
       return s;
     };
 
+    const queueDir = (nd) => {
+      if (!running) return;
+      const last = dirQueue.length ? dirQueue[dirQueue.length - 1] : dir;
+      if (nd.x === -last.x && nd.y === -last.y) return;
+      while (dirQueue.length >= DIR_QUEUE_MAX) dirQueue.shift();
+      dirQueue.push(nd);
+    };
+
     const setView = (v) => {
       if (v === "playing") {
         panelSettings.hidden = true;
         panelDeath.hidden = true;
+        if (dpad) dpad.hidden = false;
         root.classList.add("snake-slot--playing");
       } else if (v === "death") {
         panelSettings.hidden = true;
         panelDeath.hidden = false;
+        if (dpad) dpad.hidden = true;
         root.classList.remove("snake-slot--playing");
       } else {
         panelSettings.hidden = false;
         panelDeath.hidden = true;
+        if (dpad) dpad.hidden = true;
         root.classList.remove("snake-slot--playing");
       }
     };
 
     const resizeCanvas = () => {
       const wrap = canvas.parentElement;
-      const maxPx = wrap
-        ? Math.min(360, wrap.clientWidth || 360)
-        : 360;
-      const dpr =
-        typeof window.devicePixelRatio === "number"
-          ? window.devicePixelRatio
-          : 1;
-      const gMax = Math.max(gridW, gridH);
-      const cell = Math.max(6, Math.floor(maxPx / gMax));
+      if (!wrap) return { ctx: null, cell: 8, pxW: 0, pxH: 0 };
+      const pad = 8;
+      let availW = Math.max(64, (wrap.clientWidth || 200) - pad);
+      let availH = Math.max(64, (wrap.clientHeight || 0) - pad);
+      if (availH < 48) {
+        availH = Math.max(120, Math.floor((availW * gridH) / gridW));
+      }
+      const cellW = Math.floor(availW / gridW);
+      const cellH = Math.floor(availH / gridH);
+      let cell = Math.min(cellW, cellH);
+      cell = Math.max(4, Math.min(cell, 72));
       const pxW = cell * gridW;
       const pxH = cell * gridH;
+      const dpr =
+        typeof window.devicePixelRatio === "number" ? window.devicePixelRatio : 1;
       canvas.width = Math.floor(pxW * dpr);
       canvas.height = Math.floor(pxH * dpr);
       canvas.style.width = pxW + "px";
@@ -306,11 +377,13 @@
       for (let y = 0; y < gh; y++) {
         for (let x = 0; x < gw; x++) {
           const alt = (x + y) % 2 === 0;
-          if (th.chess) {
-            ctx.fillStyle = alt ? th.boardA : th.boardB;
-          } else {
-            ctx.fillStyle = alt ? th.boardA : th.boardB;
-          }
+          ctx.fillStyle = th.chess
+            ? alt
+              ? th.boardA
+              : th.boardB
+            : alt
+              ? th.boardA
+              : th.boardB;
           ctx.fillRect(x * cell, y * cell, cell, cell);
         }
       }
@@ -371,8 +444,7 @@
     };
 
     const resetGame = () => {
-      const key = (selField && selField.value) || "medium";
-      const dim = FIELD_DIM[key] || FIELD_DIM.medium;
+      const dim = FIELD_DIM[fieldKey] || FIELD_DIM.medium;
       gridW = dim.w;
       gridH = dim.h;
       const cx = Math.floor(gridW / 2);
@@ -383,7 +455,7 @@
         { x: cx, y: cy },
       ];
       dir = { x: 1, y: 0 };
-      pendingDir = null;
+      dirQueue.length = 0;
       foods.clear();
       score = 0;
       if (elScore) elScore.textContent = "0";
@@ -405,11 +477,11 @@
 
     const tick = () => {
       if (!running) return;
-      if (pendingDir) {
-        if (!(pendingDir.x === -dir.x && pendingDir.y === -dir.y)) {
-          dir = pendingDir;
+      if (dirQueue.length > 0) {
+        const nd = dirQueue.shift();
+        if (!(nd.x === -dir.x && nd.y === -dir.y)) {
+          dir = nd;
         }
-        pendingDir = null;
       }
       const head = snake[snake.length - 1];
       const nx = head.x + dir.x;
@@ -450,8 +522,7 @@
       setView("playing");
       canvas.tabIndex = 0;
       canvas.focus();
-      const spd =
-        SPEED_MS[(selSpeed && selSpeed.value) || "snake"] || SPEED_MS.snake;
+      const spd = SPEED_MS[speedKey] || SPEED_MS.snake;
       timer = setInterval(tick, spd);
     };
 
@@ -471,11 +542,10 @@
     };
 
     const onKey = (e) => {
-      if (!running) return;
       const nd = _dirFromKey(e.key);
       if (nd) {
         e.preventDefault();
-        pendingDir = nd;
+        queueDir(nd);
       }
     };
     canvas.addEventListener("keydown", onKey);
@@ -483,9 +553,43 @@
       if (running) canvas.focus();
     });
 
-    window.addEventListener("resize", () => {
-      draw();
+    if (dpad) {
+      dpad.querySelectorAll("[data-dir]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const raw = btn.getAttribute("data-dir");
+          if (!raw) return;
+          const [xs, ys] = raw.split(",").map(Number);
+          queueDir({ x: xs, y: ys });
+          if (running) canvas.focus();
+        });
+      });
+    }
+
+    const EDGE = 0.22;
+    canvas.addEventListener("pointerdown", (e) => {
+      if (!running) return;
+      const r = canvas.getBoundingClientRect();
+      if (r.width < 8 || r.height < 8) return;
+      const fx = (e.clientX - r.left) / r.width;
+      const fy = (e.clientY - r.top) / r.height;
+      let q = null;
+      if (fy < EDGE) q = { x: 0, y: -1 };
+      else if (fy > 1 - EDGE) q = { x: 0, y: 1 };
+      else if (fx < EDGE) q = { x: -1, y: 0 };
+      else if (fx > 1 - EDGE) q = { x: 1, y: 0 };
+      if (q) {
+        e.preventDefault();
+        queueDir(q);
+      }
     });
+
+    const wrap = canvas.parentElement;
+    let ro = null;
+    if (wrap && typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => draw());
+      ro.observe(wrap);
+    }
+    window.addEventListener("resize", () => draw());
 
     setView("settings");
     resetGame();

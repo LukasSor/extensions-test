@@ -1,45 +1,69 @@
 <div class="snake-slot" data-snake-config="{{config}}">
-  <div class="snake-above">
-    <div class="snake-panel snake-panel-settings" data-snake-panel="settings">
-      <p class="snake-lead">Arrow keys or WASD · click the board to focus</p>
-      <div class="snake-settings-grid">
-        <label class="snake-control">
-          <span class="snake-control-label">Field</span>
-          <select class="snake-select snake-select-field" aria-label="Field size">
-            <option value="small">Small</option>
-            <option value="medium">Medium</option>
-            <option value="large">Large</option>
-          </select>
-        </label>
-        <label class="snake-control">
-          <span class="snake-control-label">Speed</span>
-          <select class="snake-select snake-select-speed" aria-label="Speed">
-            <option value="turtle">Turtle</option>
-            <option value="rabbit">Rabbit</option>
-            <option value="snake">Snake</option>
-          </select>
-        </label>
-        <label class="snake-control snake-control-span2">
-          <span class="snake-control-label">Theme</span>
-          <select class="snake-select snake-select-theme" aria-label="Theme">
-            <option value="normal">Normal (green)</option>
-            <option value="dark">Dark</option>
-            <option value="frozen">Frozen (blue)</option>
-            <option value="vulcan">Vulcan (red / brown)</option>
-            <option value="chess">Chess (white / black)</option>
-            <option value="synthwave">Synthwave</option>
-            <option value="catppuccin">Catppuccin (Mocha)</option>
-          </select>
-        </label>
-        <label class="snake-control">
-          <span class="snake-control-label">Food on field</span>
-          <select class="snake-select snake-select-food" aria-label="Food pellets">
-            <option value="1">1</option>
-            <option value="3">3</option>
-            <option value="5">5</option>
-          </select>
-        </label>
+  <div class="snake-toolbar">
+    <div class="snake-score-row">
+      <span class="snake-score-label">Score</span>
+      <span class="snake-score" aria-live="polite">0</span>
+    </div>
+    <div class="snake-dpad" data-snake-dpad hidden aria-label="Direction">
+      <button type="button" class="snake-dpad-btn" data-dir="0,-1" aria-label="Up">↑</button>
+      <div class="snake-dpad-mid">
+        <button type="button" class="snake-dpad-btn" data-dir="-1,0" aria-label="Left">←</button>
+        <button type="button" class="snake-dpad-btn" data-dir="1,0" aria-label="Right">→</button>
       </div>
+      <button type="button" class="snake-dpad-btn" data-dir="0,1" aria-label="Down">↓</button>
+    </div>
+  </div>
+
+  <div class="snake-panels">
+    <div class="snake-panel snake-panel-settings" data-snake-panel="settings">
+      <p class="snake-lead">Arrow keys, WASD, D-pad, or tap the board edges · queued turns apply on the next steps</p>
+
+      <div class="snake-icon-row" role="group" aria-label="Board size">
+        <span class="snake-icon-row-label">Board</span>
+        <div class="snake-icon-row-opts">
+          <button type="button" class="snake-chip snake-chip-field" data-snake-field="small" aria-pressed="false" title="Small (10×9)">
+            <span class="snake-chip-grid snake-chip-grid--sm" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="snake-chip snake-chip-field" data-snake-field="medium" aria-pressed="false" title="Medium (17×15)">
+            <span class="snake-chip-grid snake-chip-grid--md" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="snake-chip snake-chip-field" data-snake-field="large" aria-pressed="false" title="Large (24×21)">
+            <span class="snake-chip-grid snake-chip-grid--lg" aria-hidden="true"></span>
+          </button>
+        </div>
+      </div>
+
+      <div class="snake-icon-row" role="group" aria-label="Speed">
+        <span class="snake-icon-row-label">Speed</span>
+        <div class="snake-icon-row-opts">
+          <button type="button" class="snake-chip snake-chip-speed" data-snake-speed="turtle" aria-pressed="false" title="Slow">🐢</button>
+          <button type="button" class="snake-chip snake-chip-speed" data-snake-speed="snake" aria-pressed="false" title="Normal">🐍</button>
+          <button type="button" class="snake-chip snake-chip-speed" data-snake-speed="rabbit" aria-pressed="false" title="Fast">🐇</button>
+        </div>
+      </div>
+
+      <div class="snake-icon-row" role="group" aria-label="Food pellets">
+        <span class="snake-icon-row-label">Food</span>
+        <div class="snake-icon-row-opts">
+          <button type="button" class="snake-chip snake-chip-food" data-snake-food="1" aria-pressed="false" title="1 apple">1</button>
+          <button type="button" class="snake-chip snake-chip-food" data-snake-food="3" aria-pressed="false" title="3 apples">3</button>
+          <button type="button" class="snake-chip snake-chip-food" data-snake-food="5" aria-pressed="false" title="5 apples">5</button>
+        </div>
+      </div>
+
+      <div class="snake-icon-row snake-icon-row--wrap" role="group" aria-label="Theme">
+        <span class="snake-icon-row-label">Theme</span>
+        <div class="snake-icon-row-opts snake-icon-row-opts--themes">
+          <button type="button" class="snake-chip snake-chip-theme snake-swatch-normal" data-snake-theme="normal" aria-pressed="false" title="Normal"></button>
+          <button type="button" class="snake-chip snake-chip-theme snake-swatch-dark" data-snake-theme="dark" aria-pressed="false" title="Dark"></button>
+          <button type="button" class="snake-chip snake-chip-theme snake-swatch-frozen" data-snake-theme="frozen" aria-pressed="false" title="Frozen"></button>
+          <button type="button" class="snake-chip snake-chip-theme snake-swatch-vulcan" data-snake-theme="vulcan" aria-pressed="false" title="Vulcan"></button>
+          <button type="button" class="snake-chip snake-chip-theme snake-swatch-chess" data-snake-theme="chess" aria-pressed="false" title="Chess"></button>
+          <button type="button" class="snake-chip snake-chip-theme snake-swatch-synthwave" data-snake-theme="synthwave" aria-pressed="false" title="Synthwave"></button>
+          <button type="button" class="snake-chip snake-chip-theme snake-swatch-catppuccin" data-snake-theme="catppuccin" aria-pressed="false" title="Catppuccin"></button>
+        </div>
+      </div>
+
       <button type="button" class="snake-btn snake-btn-primary snake-start">Start</button>
     </div>
 
@@ -51,11 +75,6 @@
         <button type="button" class="snake-btn snake-btn-secondary snake-death-settings">Settings</button>
       </div>
     </div>
-  </div>
-
-  <div class="snake-score-row">
-    <span class="snake-score-label">Score</span>
-    <span class="snake-score" aria-live="polite">0</span>
   </div>
 
   <div class="snake-board-wrap">

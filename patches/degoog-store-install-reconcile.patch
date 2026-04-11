@@ -1,0 +1,133 @@
+﻿diff --git a/src/client/settings/store-tab.ts b/src/client/settings/store-tab.ts
+index 37409ab..b7bad4d 100644
+--- a/src/client/settings/store-tab.ts
++++ b/src/client/settings/store-tab.ts
+@@ -553,7 +553,10 @@ export async function initStoreTab(
+       });
+       const data = (await res.json()) as { error?: string };
+       if (!res.ok) alert(data.error || "Install failed");
+-      else await loadItems().then(() => render());
++      else {
++        await loadItems().then(() => render());
++        alert("Installed successfully.");
++      }
+     } catch {
+       alert("Network error");
+     } finally {
+diff --git a/src/server/extensions/store/repo-manager.ts b/src/server/extensions/store/repo-manager.ts
+index 9c2e169..7b7d4b5 100644
+--- a/src/server/extensions/store/repo-manager.ts
++++ b/src/server/extensions/store/repo-manager.ts
+@@ -445,6 +445,15 @@ function _parseDependencyUrl(depUrl: string): {
+   return null;
+ }
+ 
++/** Safe on Windows (avoids forward-slash-only prefix checks on backslash paths). */
++function _isResolvedPathInside(parent: string, child: string): boolean {
++  const p = resolve(parent);
++  const c = resolve(child);
++  if (c === p) return true;
++  const rel = relative(p, c);
++  return rel !== "" && !rel.startsWith("..");
++}
++
+ const _installingSet = new Set<string>();
+ 
+ async function _installDependencies(dependencies: string[]): Promise<void> {
+@@ -504,7 +513,7 @@ export async function installItem(
+   const storeDir = getStoreDir();
+   const srcDir = join(storeDir, repo.localPath, normalizedPath);
+   const repoBase = resolve(join(storeDir, repo.localPath));
+-  if (!resolve(srcDir).startsWith(repoBase + "/")) {
++  if (!_isResolvedPathInside(repoBase, srcDir)) {
+     throw new Error("Invalid item path.");
+   }
+   try {
+@@ -544,31 +553,69 @@ export async function installItem(
+     await _installDependencies(manifest.dependencies);
+   }
+ 
+-  const freshData = await readReposData();
+-
+   const folderName = normalizedPath.split("/").pop() ?? normalizedPath;
+   const destBase = getDestDir(type);
+   await mkdir(destBase, { recursive: true });
+   const destDir = join(destBase, folderName);
++  const version = manifest.version ?? "0.0.0";
++
++  const installKeyMatches = (
++    i: InstalledItem,
++  ): boolean =>
++    `${normalizeRepoUrl(i.repoUrl)}::${i.type}::${i.itemPath}` === key;
++
++  let state = await readReposData();
++  if (state.installed.some(installKeyMatches)) {
++    _installingSet.delete(key);
++    await reloadAfterAction(type);
++    return;
++  }
++
++  let destExists = false;
+   try {
+-    await stat(destDir);
+-    throw new Error(
+-      `A ${type} named "${folderName}" already exists. Remove it first.`,
+-    );
+-  } catch (e) {
+-    if (e instanceof Error && e.message.includes("already exists")) throw e;
++    const st = await stat(destDir);
++    destExists = st.isDirectory();
++  } catch {
++    destExists = false;
++  }
++
++  if (destExists) {
++    state = await readReposData();
++    if (!state.installed.some(installKeyMatches)) {
++      state.installed.push({
++        repoUrl: repo.url,
++        type,
++        itemPath: normalizedPath,
++        installedAs: folderName,
++        installedAt: new Date().toISOString(),
++        version,
++      });
++      await writeReposData(state);
++    }
++    _installingSet.delete(key);
++    await reloadAfterAction(type);
++    return;
+   }
++
+   await copyItemDir(srcDir, destDir, STORE_METADATA);
+-  const version = manifest.version ?? "0.0.0";
+-  freshData.installed.push({
+-    repoUrl: repo.url,
+-    type,
+-    itemPath: normalizedPath,
+-    installedAs: folderName,
+-    installedAt: new Date().toISOString(),
+-    version,
+-  });
+-  await writeReposData(freshData);
++  state = await readReposData();
++  if (!state.installed.some(installKeyMatches)) {
++    state.installed.push({
++      repoUrl: repo.url,
++      type,
++      itemPath: normalizedPath,
++      installedAs: folderName,
++      installedAt: new Date().toISOString(),
++      version,
++    });
++  }
++  try {
++    await writeReposData(state);
++  } catch (err) {
++    await rm(destDir, { recursive: true, force: true }).catch(() => {});
++    _installingSet.delete(key);
++    throw err;
++  }
+   _installingSet.delete(key);
+   await reloadAfterAction(type);
+ }
