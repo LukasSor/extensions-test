@@ -52,7 +52,7 @@ Using **`export default slot`** alone **does not work** — `default.slot` would
 
 ## Settings
 
-**Settings → Plugins**: find the slot **Result date badges** (`slot-result-date-badges`) and use the **Enabled** toggle.
+There is **no** per-plugin “Enabled” toggle: when the slot is installed, badges run on web results. To turn them off, **uninstall** the plugin from the Store (or disable the slot in Degoog if your build exposes that).
 
 ---
 
