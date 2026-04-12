@@ -338,8 +338,12 @@
 
     let snake = [];
     let dir = { x: 1, y: 0 };
-    /** At most one buffered turn; each new press overwrites (no multi-tick “presaved” chain). */
+    /**
+     * Up to two buffered turns (next tick + the one after). A third press replaces only the
+     * second slot so fast Left→Up keeps both, while spamming the same axis does not queue long chains.
+     */
     let pendingDir = null;
+    let pendingDir2 = null;
     const foods = new Set();
     let score = 0;
     let running = false;
@@ -364,9 +368,24 @@
     const queueDir = (nd) => {
       if (!running) return;
       if (nd.x === -dir.x && nd.y === -dir.y) return;
-      if (pendingDir === null && _sameDir(nd, dir)) return;
-      if (pendingDir !== null && _sameDir(nd, pendingDir)) return;
-      pendingDir = nd;
+
+      if (pendingDir === null) {
+        if (_sameDir(nd, dir)) return;
+        pendingDir = nd;
+        return;
+      }
+
+      if (nd.x === -pendingDir.x && nd.y === -pendingDir.y) return;
+
+      if (pendingDir2 === null) {
+        if (_sameDir(nd, pendingDir)) return;
+        pendingDir2 = nd;
+        return;
+      }
+
+      if (nd.x === -pendingDir.x && nd.y === -pendingDir.y) return;
+      if (_sameDir(nd, pendingDir2)) return;
+      pendingDir2 = nd;
     };
 
     const applyUi = () => {
@@ -574,6 +593,7 @@
       ];
       dir = { x: 1, y: 0 };
       pendingDir = null;
+      pendingDir2 = null;
       foods.clear();
       score = 0;
       if (elScore) elScore.textContent = "0";
@@ -585,6 +605,7 @@
     const gameOver = (msg) => {
       running = false;
       pendingDir = null;
+      pendingDir2 = null;
       cancelAnimRaf();
       animSnakeBefore = null;
       if (timer != null) {
@@ -601,6 +622,7 @@
       if (!running || uiMode !== "playing") return;
       running = false;
       pendingDir = null;
+      pendingDir2 = null;
       cancelAnimRaf();
       animSnakeBefore = null;
       pauseSub = "main";
@@ -630,7 +652,8 @@
       const prevSnake = snake.map((s) => ({ x: s.x, y: s.y }));
       if (pendingDir !== null) {
         const nd = pendingDir;
-        pendingDir = null;
+        pendingDir = pendingDir2;
+        pendingDir2 = null;
         if (!(nd.x === -dir.x && nd.y === -dir.y)) dir = nd;
       }
       const head = snake[snake.length - 1];
@@ -715,13 +738,17 @@
       return null;
     };
 
-    /** Prefer `KeyboardEvent.code` so layout matches physical keys at high speed. */
+    /** Prefer `KeyboardEvent.code` (physical keys); fall back to `key` for labels / IME quirks. */
     const _dirFromEvent = (e) => {
       const c = e.code;
       if (c === "ArrowUp" || c === "KeyW") return { x: 0, y: -1 };
       if (c === "ArrowDown" || c === "KeyS") return { x: 0, y: 1 };
       if (c === "ArrowLeft" || c === "KeyA") return { x: -1, y: 0 };
       if (c === "ArrowRight" || c === "KeyD") return { x: 1, y: 0 };
+      if (c === "Numpad8") return { x: 0, y: -1 };
+      if (c === "Numpad2") return { x: 0, y: 1 };
+      if (c === "Numpad4") return { x: -1, y: 0 };
+      if (c === "Numpad6") return { x: 1, y: 0 };
       return _dirFromKey(e.key);
     };
 
@@ -740,11 +767,12 @@
       }
       if (!_snakeKeyScope()) return;
       if (!running || uiMode !== "playing") return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
       const nd = _dirFromEvent(e);
       if (!nd) return;
       if (e.repeat) {
-        if (!pendingDir && _sameDir(nd, dir)) return;
-        if (pendingDir && _sameDir(nd, pendingDir)) return;
+        const last = pendingDir2 ?? pendingDir ?? dir;
+        if (_sameDir(nd, last)) return;
       }
       e.preventDefault();
       e.stopPropagation();
