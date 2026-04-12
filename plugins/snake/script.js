@@ -6,7 +6,8 @@
     large: { w: 24, h: 21 },
   };
   const SPEED_MS = { turtle: 220, rabbit: 95, snake: 145 };
-  const DIR_QUEUE_MAX = 3;
+  /** Enough buffered turns for fast presets + key repeat without dropping intent. */
+  const DIR_QUEUE_MAX = 12;
 
   const THEMES = {
     normal: {
@@ -360,10 +361,15 @@
       return s;
     };
 
+    const _sameDir = (a, b) => a && b && a.x === b.x && a.y === b.y;
+
     const queueDir = (nd) => {
       if (!running) return;
-      const last = dirQueue.length ? dirQueue[dirQueue.length - 1] : dir;
+      const lastQueued = dirQueue.length ? dirQueue[dirQueue.length - 1] : null;
+      const last = lastQueued || dir;
       if (nd.x === -last.x && nd.y === -last.y) return;
+      if (!lastQueued && _sameDir(nd, dir)) return;
+      if (lastQueued && _sameDir(nd, lastQueued)) return;
       while (dirQueue.length >= DIR_QUEUE_MAX) dirQueue.shift();
       dirQueue.push(nd);
     };
@@ -592,6 +598,7 @@
       if (elDeathMsg) elDeathMsg.textContent = msg || "You crashed.";
       setView("death");
       draw();
+      if (btnDeathRestart) queueMicrotask(() => btnDeathRestart.focus());
     };
 
     const pauseGame = () => {
@@ -712,12 +719,41 @@
       return null;
     };
 
-    const onCanvasKey = (e) => {
-      const nd = _dirFromKey(e.key);
-      if (nd) {
+    /** Prefer `KeyboardEvent.code` so layout matches physical keys at high speed. */
+    const _dirFromEvent = (e) => {
+      const c = e.code;
+      if (c === "ArrowUp" || c === "KeyW") return { x: 0, y: -1 };
+      if (c === "ArrowDown" || c === "KeyS") return { x: 0, y: 1 };
+      if (c === "ArrowLeft" || c === "KeyA") return { x: -1, y: 0 };
+      if (c === "ArrowRight" || c === "KeyD") return { x: 1, y: 0 };
+      return _dirFromKey(e.key);
+    };
+
+    const _snakeKeyScope = () =>
+      typeof root.matches === "function" && root.matches(":focus-within")
+        ? true
+        : root.contains(document.activeElement);
+
+    const onGameKeysCapture = (e) => {
+      if (uiMode === "death" && (e.code === "Space" || e.key === " ")) {
+        if (!root.contains(e.target)) return;
         e.preventDefault();
-        queueDir(nd);
+        e.stopPropagation();
+        startGame();
+        return;
       }
+      if (!_snakeKeyScope()) return;
+      if (!running || uiMode !== "playing") return;
+      const nd = _dirFromEvent(e);
+      if (!nd) return;
+      if (e.repeat) {
+        const tail = dirQueue.length ? dirQueue[dirQueue.length - 1] : null;
+        if (!tail && _sameDir(nd, dir)) return;
+        if (tail && _sameDir(nd, tail)) return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      queueDir(nd);
     };
 
     const onEscapeKey = (e) => {
@@ -740,7 +776,7 @@
       }
     };
 
-    canvas.addEventListener("keydown", onCanvasKey);
+    root.addEventListener("keydown", onGameKeysCapture, true);
     root.addEventListener("keydown", onEscapeKey, true);
     canvas.addEventListener("click", () => {
       if (running) canvas.focus();
