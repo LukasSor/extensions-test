@@ -6,8 +6,6 @@
     large: { w: 24, h: 21 },
   };
   const SPEED_MS = { turtle: 220, rabbit: 95, snake: 145 };
-  /** Enough buffered turns for fast presets + key repeat without dropping intent. */
-  const DIR_QUEUE_MAX = 12;
 
   const THEMES = {
     normal: {
@@ -340,8 +338,8 @@
 
     let snake = [];
     let dir = { x: 1, y: 0 };
-    /** Queued directions (max DIR_QUEUE_MAX); each tick consumes one if legal. */
-    const dirQueue = [];
+    /** At most one buffered turn; each new press overwrites (no multi-tick “presaved” chain). */
+    let pendingDir = null;
     const foods = new Set();
     let score = 0;
     let running = false;
@@ -365,13 +363,10 @@
 
     const queueDir = (nd) => {
       if (!running) return;
-      const lastQueued = dirQueue.length ? dirQueue[dirQueue.length - 1] : null;
-      const last = lastQueued || dir;
-      if (nd.x === -last.x && nd.y === -last.y) return;
-      if (!lastQueued && _sameDir(nd, dir)) return;
-      if (lastQueued && _sameDir(nd, lastQueued)) return;
-      while (dirQueue.length >= DIR_QUEUE_MAX) dirQueue.shift();
-      dirQueue.push(nd);
+      if (nd.x === -dir.x && nd.y === -dir.y) return;
+      if (pendingDir === null && _sameDir(nd, dir)) return;
+      if (pendingDir !== null && _sameDir(nd, pendingDir)) return;
+      pendingDir = nd;
     };
 
     const applyUi = () => {
@@ -578,7 +573,7 @@
         { x: cx, y: cy },
       ];
       dir = { x: 1, y: 0 };
-      dirQueue.length = 0;
+      pendingDir = null;
       foods.clear();
       score = 0;
       if (elScore) elScore.textContent = "0";
@@ -589,6 +584,7 @@
 
     const gameOver = (msg) => {
       running = false;
+      pendingDir = null;
       cancelAnimRaf();
       animSnakeBefore = null;
       if (timer != null) {
@@ -604,6 +600,7 @@
     const pauseGame = () => {
       if (!running || uiMode !== "playing") return;
       running = false;
+      pendingDir = null;
       cancelAnimRaf();
       animSnakeBefore = null;
       pauseSub = "main";
@@ -631,11 +628,10 @@
     const tick = () => {
       if (!running) return;
       const prevSnake = snake.map((s) => ({ x: s.x, y: s.y }));
-      if (dirQueue.length > 0) {
-        const nd = dirQueue.shift();
-        if (!(nd.x === -dir.x && nd.y === -dir.y)) {
-          dir = nd;
-        }
+      if (pendingDir !== null) {
+        const nd = pendingDir;
+        pendingDir = null;
+        if (!(nd.x === -dir.x && nd.y === -dir.y)) dir = nd;
       }
       const head = snake[snake.length - 1];
       const nx = head.x + dir.x;
@@ -747,9 +743,8 @@
       const nd = _dirFromEvent(e);
       if (!nd) return;
       if (e.repeat) {
-        const tail = dirQueue.length ? dirQueue[dirQueue.length - 1] : null;
-        if (!tail && _sameDir(nd, dir)) return;
-        if (tail && _sameDir(nd, tail)) return;
+        if (!pendingDir && _sameDir(nd, dir)) return;
+        if (pendingDir && _sameDir(nd, pendingDir)) return;
       }
       e.preventDefault();
       e.stopPropagation();
