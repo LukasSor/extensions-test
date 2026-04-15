@@ -1,0 +1,54 @@
+<div class="mw-slot" data-mw-config="{{config}}">
+  <div class="mw-toolbar" aria-label="Minesweeper status">
+    <div class="mw-stat">
+      <span class="mw-stat-label">Time</span>
+      <span class="mw-time" aria-live="polite">000</span>
+    </div>
+    <div class="mw-stat">
+      <span class="mw-stat-label">Flags</span>
+      <span class="mw-flags" aria-live="polite">0</span>
+    </div>
+  </div>
+
+  <div class="mw-board-wrap">
+    <div class="mw-board" role="grid" aria-label="Minesweeper board"></div>
+
+    <div class="mw-overlay" data-mw-overlay>
+      <div class="mw-overlay-backdrop" aria-hidden="true"></div>
+      <div class="mw-overlay-card" role="dialog" aria-modal="true" aria-label="Minesweeper menu">
+        <div class="mw-panel mw-panel-settings" data-mw-panel="settings">
+          <p class="mw-lead">Choose difficulty and theme, then start a run.</p>
+
+          <div class="mw-icon-row" role="group" aria-label="Difficulty">
+            <span class="mw-icon-row-label">Difficulty</span>
+            <div class="mw-icon-row-opts">
+              <button type="button" class="mw-chip mw-chip-difficulty" data-mw-difficulty="easy" aria-pressed="false">Easy</button>
+              <button type="button" class="mw-chip mw-chip-difficulty" data-mw-difficulty="medium" aria-pressed="false">Medium</button>
+              <button type="button" class="mw-chip mw-chip-difficulty" data-mw-difficulty="hard" aria-pressed="false">Hard</button>
+            </div>
+          </div>
+
+          <div class="mw-icon-row" role="group" aria-label="Theme">
+            <span class="mw-icon-row-label">Theme</span>
+            <div class="mw-icon-row-opts">
+              <button type="button" class="mw-chip mw-chip-theme mw-swatch-classic" data-mw-theme="classic" aria-pressed="false" title="Classic"></button>
+              <button type="button" class="mw-chip mw-chip-theme mw-swatch-dark" data-mw-theme="dark" aria-pressed="false" title="Dark"></button>
+              <button type="button" class="mw-chip mw-chip-theme mw-swatch-ocean" data-mw-theme="ocean" aria-pressed="false" title="Ocean"></button>
+            </div>
+          </div>
+
+          <button type="button" class="mw-btn mw-btn-primary mw-start">Start</button>
+        </div>
+
+        <div class="mw-panel mw-panel-status" data-mw-panel="status" hidden>
+          <p class="mw-status-title">Game over</p>
+          <p class="mw-status-msg" aria-live="polite"></p>
+          <div class="mw-status-actions">
+            <button type="button" class="mw-btn mw-btn-primary mw-restart">Restart</button>
+            <button type="button" class="mw-btn mw-btn-secondary mw-open-settings">Settings</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
