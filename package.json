@@ -68,6 +68,13 @@
         "type": "command"
       },
       {
+        "path": "plugins/minesweeper",
+        "name": "Minesweeper",
+        "description": "Minesweeper command game with Time/Flags header and settings for difficulty and theme.",
+        "version": "1.0.0",
+        "type": "command"
+      },
+      {
         "path": "plugins/coinflip",
         "name": "Coin flip",
         "description": "3D coin flip card: !coinflip / !flip with spin animation, result under the coin, spin again in place.",
