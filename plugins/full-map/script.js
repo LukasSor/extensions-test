@@ -8,6 +8,24 @@
 
   let leafletPromise = null;
   let activeView = null;
+  const setFullMapMode = (enabled) => {
+    document.body.classList.toggle("full-map-mode", enabled);
+    const layout = document.getElementById("results-layout");
+    const main = document.getElementById("results-main");
+    const list = document.getElementById("results-list");
+    const sidebar = document.getElementById("sidebar-col");
+    if (layout) layout.classList.toggle("full-map-layout", enabled);
+    if (main) main.classList.toggle("full-map-main", enabled);
+    if (list) list.classList.toggle("full-map-list", enabled);
+    if (sidebar) sidebar.classList.toggle("full-map-sidebar-hidden", enabled);
+  };
+
+  const esc = (value) =>
+    String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
 
   const isFullMapActive = () =>
     !!document.querySelector(`.results-tab.active[data-type="${TAB_TYPE}"]`);
@@ -103,37 +121,37 @@
 
   const buildInfoHtml = (place) => {
     const image = place.image
-      ? `<img class="fm-info-image" src="${place.image}" alt="" loading="lazy">`
+      ? `<img class="fm-info-image" src="${esc(place.image)}" alt="" loading="lazy">`
       : "";
     const summary = place.wikiSummary
-      ? `<p class="fm-info-summary">${place.wikiSummary}</p>`
+      ? `<p class="fm-info-summary">${esc(place.wikiSummary)}</p>`
       : `<p class="fm-info-summary">No rich description available for this place yet.</p>`;
     const details = [
-      place.address ? `<li><strong>Address:</strong> ${place.address}</li>` : "",
-      place.city ? `<li><strong>City:</strong> ${place.city}</li>` : "",
-      place.country ? `<li><strong>Country:</strong> ${place.country}</li>` : "",
-      place.kind ? `<li><strong>Category:</strong> ${place.kind}</li>` : "",
-      place.phone ? `<li><strong>Phone:</strong> ${place.phone}</li>` : "",
-      place.openingHours ? `<li><strong>Opening:</strong> ${place.openingHours}</li>` : "",
+      place.address ? `<li><strong>Address:</strong> ${esc(place.address)}</li>` : "",
+      place.city ? `<li><strong>City:</strong> ${esc(place.city)}</li>` : "",
+      place.country ? `<li><strong>Country:</strong> ${esc(place.country)}</li>` : "",
+      place.kind ? `<li><strong>Category:</strong> ${esc(place.kind)}</li>` : "",
+      place.phone ? `<li><strong>Phone:</strong> ${esc(place.phone)}</li>` : "",
+      place.openingHours ? `<li><strong>Opening:</strong> ${esc(place.openingHours)}</li>` : "",
       place.website
-        ? `<li><strong>Website:</strong> <a href="${place.website}" target="_blank" rel="noopener">${place.website}</a></li>`
+        ? `<li><strong>Website:</strong> <a href="${esc(place.website)}" target="_blank" rel="noopener">${esc(place.website)}</a></li>`
         : "",
     ]
       .filter(Boolean)
       .join("");
 
     const pseudoReviews = place.wikiTitle
-      ? `<div class="fm-reviews"><h4>Background</h4><p>Source article: ${place.wikiTitle}</p></div>`
+      ? `<div class="fm-reviews"><h4>Background</h4><p>Source article: ${esc(place.wikiTitle)}</p></div>`
       : `<div class="fm-reviews"><h4>Reviews</h4><p>No public review feed is connected yet.</p></div>`;
 
     return `
       ${image}
       <div class="fm-info-body">
-        <h3>${place.name}</h3>
+        <h3>${esc(place.name)}</h3>
         ${summary}
         <ul class="fm-info-meta">${details}</ul>
         ${pseudoReviews}
-        <a class="fm-open-link" href="${place.sourceUrl}" target="_blank" rel="noopener">Open in OpenStreetMap</a>
+        <a class="fm-open-link" href="${esc(place.sourceUrl)}" target="_blank" rel="noopener">Open in OpenStreetMap</a>
       </div>
     `;
   };
@@ -151,8 +169,8 @@
       .map(
         (place, idx) => `
       <button type="button" class="fm-result" data-fm-index="${idx}">
-        <div class="fm-result-title">${place.name}</div>
-        <div class="fm-result-sub">${place.address || place.city || place.country || place.kind}</div>
+        <div class="fm-result-title">${esc(place.name)}</div>
+        <div class="fm-result-sub">${esc(place.address || place.city || place.country || place.kind)}</div>
       </button>
     `,
       )
@@ -188,15 +206,45 @@
       return;
     }
 
-    const map = L.map(mapEl, { zoomControl: true });
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    const map = L.map(mapEl, { zoomControl: true, preferCanvas: true });
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
       maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      subdomains: "abcd",
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
     }).addTo(map);
 
     const markers = [];
     let selectedIndex = -1;
     let visibleIndexes = places.map((_, idx) => idx);
+    const focusForIndexes = (indexes) => {
+      if (indexes.length === 0) return;
+      if (indexes.length === 1) {
+        const p = places[indexes[0]];
+        map.setView([p.lat, p.lon], 15, { animate: true });
+        return;
+      }
+      let minLat = 90;
+      let maxLat = -90;
+      let minLon = 180;
+      let maxLon = -180;
+      indexes.forEach((idx) => {
+        const p = places[idx];
+        minLat = Math.min(minLat, p.lat);
+        maxLat = Math.max(maxLat, p.lat);
+        minLon = Math.min(minLon, p.lon);
+        maxLon = Math.max(maxLon, p.lon);
+      });
+      const latSpan = maxLat - minLat;
+      const lonSpan = maxLon - minLon;
+      if (latSpan > 35 || lonSpan > 70) {
+        const p = places[indexes[0]];
+        map.setView([p.lat, p.lon], 13, { animate: true });
+        return;
+      }
+      const bounds = L.latLngBounds(indexes.map((idx) => [places[idx].lat, places[idx].lon]));
+      map.fitBounds(bounds.pad(0.24), { animate: true, maxZoom: 15 });
+    };
 
     const selectPlace = (idx, pan = true) => {
       if (idx < 0 || idx >= places.length) return;
@@ -219,7 +267,7 @@
       });
 
       infoEl.innerHTML = buildInfoHtml(place);
-      marker.bindPopup(`<strong>${place.name}</strong><br>${place.address || place.kind}`);
+      marker.bindPopup(`<strong>${esc(place.name)}</strong><br>${esc(place.address || place.kind)}`);
       marker.openPopup();
       if (pan) {
         map.setView([place.lat, place.lon], Math.max(map.getZoom(), 14), {
@@ -248,10 +296,7 @@
         if (!visible && map.hasLayer(marker)) marker.remove();
       });
 
-      if (visibleIndexes.length > 0) {
-        const bounds = L.latLngBounds(visibleIndexes.map((idx) => [places[idx].lat, places[idx].lon]));
-        map.fitBounds(bounds.pad(0.2));
-      }
+      focusForIndexes(visibleIndexes);
       if (!visibleIndexes.includes(selectedIndex) && visibleIndexes.length > 0) {
         selectPlace(visibleIndexes[0], false);
       }
@@ -270,8 +315,7 @@
     });
 
     if (markers.length > 0) {
-      const bounds = L.latLngBounds(places.map((p) => [p.lat, p.lon]));
-      map.fitBounds(bounds.pad(0.2));
+      focusForIndexes(visibleIndexes);
       selectPlace(0, false);
     }
 
@@ -300,12 +344,14 @@
 
     const onResize = () => map.invalidateSize();
     window.addEventListener("resize", onResize);
-    setTimeout(onResize, 120);
+    setTimeout(onResize, 80);
+    requestAnimationFrame(() => requestAnimationFrame(onResize));
 
     activeView = {
       teardown() {
         window.removeEventListener("resize", onResize);
         map.remove();
+        setFullMapMode(false);
       },
     };
   };
@@ -321,12 +367,14 @@
     if (!isFullMapActive()) {
       lastSignature = "";
       destroyActiveView();
+      setFullMapMode(false);
       return;
     }
 
     const container = document.getElementById("results-list");
     if (!container) return;
     if (container.querySelector(".full-map-root")) return;
+    setFullMapMode(true);
 
     const places = parseResults(container);
     if (places.length === 0) return;
