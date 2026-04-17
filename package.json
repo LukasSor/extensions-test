@@ -142,6 +142,13 @@
           "https://github.com/LukasSor/extensions-test/engines/solidtorrents-torrent",
           "https://github.com/LukasSor/extensions-test/engines/nyaa-torrent"
         ]
+      },
+      {
+        "path": "plugins/full-map",
+        "name": "Full Map",
+        "description": "Large OpenStreetMap tab with a place list, interactive markers, and place detail cards with optional Wikipedia media/context.",
+        "version": "1.0.0",
+        "type": "search-result-tab"
       }
     ],
     "themes": [
