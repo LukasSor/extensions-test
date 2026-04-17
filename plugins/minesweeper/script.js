@@ -371,8 +371,9 @@
 
     const startRun = () => {
       resetTimer();
-      setupBoard();
       setView("playing");
+      setupBoard();
+      paintAll();
     };
 
     chipsDifficulty.forEach((chip) => {
