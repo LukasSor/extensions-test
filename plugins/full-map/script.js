@@ -186,14 +186,28 @@
           <div class="fm-results">${listItems}</div>
         </aside>
         <section class="full-map-right">
-          <div class="fm-map" aria-label="OpenStreetMap view"></div>
+          <div class="fm-map-wrap">
+            <div class="fm-map-toolbar" role="toolbar" aria-label="Map type">
+              <div class="fm-map-toolbar-title">Map</div>
+              <div class="fm-perspective-btns" role="radiogroup" aria-label="Base map">
+                <button type="button" class="fm-perspective-btn is-active" data-fm-perspective="standard">Standard</button>
+                <button type="button" class="fm-perspective-btn" data-fm-perspective="satellite">Satellite</button>
+                <button type="button" class="fm-perspective-btn" data-fm-perspective="terrain">Terrain</button>
+              </div>
+              <label class="fm-labels-toggle">
+                <input type="checkbox" data-fm-labels checked />
+                <span>Labels</span>
+              </label>
+            </div>
+            <div class="fm-map" aria-label="Map view"></div>
+          </div>
           <div class="fm-info"><p>Select a result or marker to see details.</p></div>
         </section>
       </section>
     `;
 
     const root = container.querySelector(".full-map-root");
-    const mapEl = container.querySelector(".fm-map");
+    const mapEl = container.querySelector(".fm-map-wrap .fm-map");
     const infoEl = container.querySelector(".fm-info");
     const resultsEl = container.querySelector(".fm-results");
     const filterInput = container.querySelector(".fm-search-input");
@@ -210,11 +224,33 @@
 
     const CARTO_LIGHT = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
     const CARTO_DARK = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
-    const tileOpts = {
+    const cartoOpts = {
       maxZoom: 19,
       subdomains: "abcd",
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    };
+
+    const ESRI_IMAGERY = {
+      url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      maxZoom: 19,
+      attribution:
+        "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+    };
+
+    const OPEN_TOPO = {
+      url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+      maxZoom: 17,
+      subdomains: "abc",
+      attribution:
+        'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
+    };
+
+    const ESRI_LABELS = {
+      url: "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+      maxZoom: 19,
+      opacity: 0.92,
+      attribution: "Labels &copy; Esri",
     };
 
     const schemeIsDark = () => {
@@ -224,20 +260,78 @@
       return window.matchMedia("(prefers-color-scheme: dark)").matches;
     };
 
+    let perspective = "standard";
+    let labelsOn = true;
     let baseTileLayer = null;
-    const applyBasemapForScheme = () => {
-      const dark = schemeIsDark();
-      const url = dark ? CARTO_DARK : CARTO_LIGHT;
+    let labelsTileLayer = null;
+
+    const removeTileStack = () => {
+      if (labelsTileLayer) {
+        map.removeLayer(labelsTileLayer);
+        labelsTileLayer = null;
+      }
       if (baseTileLayer) {
         map.removeLayer(baseTileLayer);
         baseTileLayer = null;
       }
-      baseTileLayer = L.tileLayer(url, tileOpts).addTo(map);
     };
-    applyBasemapForScheme();
+
+    const applyMapTiles = () => {
+      removeTileStack();
+
+      if (perspective === "standard") {
+        const dark = schemeIsDark();
+        baseTileLayer = L.tileLayer(dark ? CARTO_DARK : CARTO_LIGHT, cartoOpts).addTo(map);
+        return;
+      }
+
+      if (perspective === "satellite") {
+        baseTileLayer = L.tileLayer(ESRI_IMAGERY.url, {
+          maxZoom: ESRI_IMAGERY.maxZoom,
+          attribution: ESRI_IMAGERY.attribution,
+        }).addTo(map);
+      } else {
+        baseTileLayer = L.tileLayer(OPEN_TOPO.url, {
+          maxZoom: OPEN_TOPO.maxZoom,
+          subdomains: OPEN_TOPO.subdomains,
+          attribution: OPEN_TOPO.attribution,
+        }).addTo(map);
+      }
+
+      if (labelsOn) {
+        labelsTileLayer = L.tileLayer(ESRI_LABELS.url, {
+          maxZoom: ESRI_LABELS.maxZoom,
+          opacity: ESRI_LABELS.opacity,
+          attribution: ESRI_LABELS.attribution,
+        }).addTo(map);
+      }
+    };
+    applyMapTiles();
+
+    const syncPerspectiveUi = () => {
+      const wrap = container.querySelector(".fm-map-wrap");
+      if (!wrap) return;
+      wrap.querySelectorAll("[data-fm-perspective]").forEach((btn) => {
+        const id = btn.getAttribute("data-fm-perspective");
+        btn.classList.toggle("is-active", id === perspective);
+        btn.setAttribute("aria-pressed", id === perspective ? "true" : "false");
+      });
+      const labelsInput = wrap.querySelector("[data-fm-labels]");
+      const labelsWrap = wrap.querySelector(".fm-labels-toggle");
+      if (labelsInput && labelsWrap) {
+        const std = perspective === "standard";
+        labelsWrap.classList.toggle("is-disabled", std);
+        labelsInput.disabled = std;
+        if (!std) {
+          labelsInput.checked = labelsOn;
+          labelsInput.indeterminate = false;
+        }
+      }
+    };
+    syncPerspectiveUi();
 
     const onAppearanceChange = () => {
-      applyBasemapForScheme();
+      applyMapTiles();
       const dark = schemeIsDark();
       const stroke = dark ? "#60a5fa" : "#1f6feb";
       const fill = dark ? "#3b82f6" : "#2f81f7";
@@ -253,6 +347,29 @@
       });
       map.invalidateSize();
     };
+
+    const toolbar = container.querySelector(".fm-map-toolbar");
+    if (toolbar) {
+      toolbar.querySelectorAll("[data-fm-perspective]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const next = btn.getAttribute("data-fm-perspective");
+          if (!next || next === perspective) return;
+          perspective = next;
+          syncPerspectiveUi();
+          applyMapTiles();
+          if (perspective === "terrain" && map.getZoom() > 17) map.setZoom(17);
+          map.invalidateSize();
+        });
+      });
+      const labelsInput = toolbar.querySelector("[data-fm-labels]");
+      if (labelsInput) {
+        labelsInput.addEventListener("change", () => {
+          labelsOn = labelsInput.checked;
+          applyMapTiles();
+          map.invalidateSize();
+        });
+      }
+    }
 
     const schemeMq = window.matchMedia("(prefers-color-scheme: dark)");
     schemeMq.addEventListener("change", onAppearanceChange);

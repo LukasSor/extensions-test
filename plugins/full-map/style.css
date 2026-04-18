@@ -150,7 +150,95 @@ html[data-theme="light"] .full-map-root {
   min-height: 0;
 }
 
+.fm-map-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.fm-map-toolbar {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+  max-width: min(100% - 1rem, 15rem);
+  padding: 0.45rem 0.5rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--fm-panel-bg, #fff) 88%, transparent);
+  border: 1px solid var(--fm-panel-border, #e2e8f0);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(8px);
+}
+
+.fm-map-toolbar-title {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fm-muted);
+}
+
+.fm-perspective-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.fm-perspective-btn {
+  appearance: none;
+  margin: 0;
+  border: 1px solid var(--fm-panel-border);
+  border-radius: 8px;
+  padding: 0.4rem 0.45rem;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--fm-panel-bg) 65%, transparent);
+}
+
+.fm-perspective-btn:hover {
+  filter: brightness(1.04);
+}
+
+.fm-perspective-btn.is-active {
+  border-color: var(--primary, #1a73e8);
+  color: var(--primary, #1a73e8);
+  background: color-mix(in srgb, var(--primary, #1a73e8) 12%, transparent);
+}
+
+.fm-labels-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+  margin-top: 0.1rem;
+}
+
+.fm-labels-toggle.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.fm-labels-toggle input {
+  margin: 0;
+  accent-color: var(--primary, #1a73e8);
+}
+
 .fm-map {
+  flex: 1;
   min-height: 100%;
 }
 
@@ -234,4 +322,10 @@ html[data-theme="light"] .full-map-root {
 .full-map-mode .leaflet-container {
   background: var(--fm-panel-bg);
   font-family: inherit;
+}
+
+.fm-map .leaflet-container {
+  width: 100%;
+  height: 100%;
+  min-height: 240px;
 }
