@@ -106,8 +106,11 @@ const pickPoiCategory = (props) => {
   }
 
   if (k === "railway") {
-    if (["station", "halt", "tram_stop", "subway_entrance", "light_rail"].includes(v)) return "transit_rail";
-    if (["platform"].includes(v)) return "transit_rail";
+    if (
+      ["station", "halt", "stop", "tram_stop", "subway_entrance", "light_rail", "platform"].includes(v)
+    ) {
+      return "transit_rail";
+    }
   }
 
   if (k === "highway") {

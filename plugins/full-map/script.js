@@ -150,7 +150,9 @@
       return "leisure";
     }
     if (k === "railway") {
-      if (["station", "halt", "tram_stop", "subway_entrance", "light_rail", "platform"].includes(v)) {
+      if (
+        ["station", "halt", "stop", "tram_stop", "subway_entrance", "light_rail", "platform"].includes(v)
+      ) {
         return "transit_rail";
       }
     }
@@ -165,9 +167,109 @@
     return "place";
   };
 
+  /**
+   * When Photon omits OSM tags in the payload, `kind` still mirrors `humanizeKind`
+   * on the server (OSM value/key with _/- → spaces). Map common phrases to POI buckets.
+   */
+  const derivePoiFromKind = (kindRaw) => {
+    const s = String(kindRaw || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[_-]+/g, " ")
+      .replace(/\s+/g, " ");
+    if (!s) return "place";
+
+    const has = (...words) => words.some((w) => s === w || s.includes(w));
+
+    if (
+      has(
+        "fast food",
+        "food court",
+        "ice cream",
+        "biergarten",
+        "street food",
+        "restaurant",
+        "cafe",
+        "coffee",
+      )
+    ) {
+      return "food";
+    }
+    if (has("bar", "pub", "nightclub")) return "drink";
+    if (/\b(pharmacy|chemist)\b/.test(s)) return "health";
+    if (/\b(hospital|clinic|doctors|dentist|veterinary)\b/.test(s)) return "medical";
+    if (/\b(bank|atm|bureau de change)\b/.test(s)) return "money";
+    if (has("fuel", "charging station")) return "fuel";
+    if (has("parking", "bicycle parking")) return "parking";
+    if (has("place of worship", "mosque", "synagogue")) return "worship";
+    if (has("school", "kindergarten", "college", "university", "library")) return "education";
+    if (has("theatre", "theater", "cinema", "arts centre", "community centre")) return "culture";
+    if (has("post office", "police", "fire station", "townhall", "town hall", "courthouse")) {
+      return "civic";
+    }
+    if (has("toilets", "toilet", "shower", "drinking water", "shelter")) return "service";
+
+    if (
+      has(
+        "supermarket",
+        "greengrocer",
+        "bakery",
+        "butcher",
+        "convenience",
+        "alcohol",
+        "beverages",
+      )
+    ) {
+      return "grocery";
+    }
+    if (has("mall", "department store")) return "shop_large";
+    if (has("clothes", "shoes", "jewelry", "jewellery", "boutique")) return "fashion";
+    if (has("electronics", "computer", "mobile phone", "hifi", "hi fi")) return "tech";
+    if (/\b(car parts|bicycle|motorcycle)\b/.test(s) || /\bcar\b/.test(s)) return "vehicle_shop";
+    if (has("hairdresser", "beauty", "cosmetics")) return "beauty";
+    if (/\b(shop|store|boutique)\b/.test(s) && !/\bworkshop\b/.test(s)) return "shop";
+
+    if (has("hotel", "motel", "guest house", "hostel", "chalet")) return "lodging";
+    if (has("museum", "gallery", "artwork", "attraction", "viewpoint")) return "sight";
+    if (has("information", "map")) return "info";
+    if (has("tourism")) return "tourism";
+
+    if (has("nature reserve")) return "park";
+    if (has("park", "garden")) return "park";
+    if (has("playground", "sports centre", "sports center", "stadium", "swimming pool", "fitness centre")) {
+      return "sport";
+    }
+    if (has("leisure")) return "leisure";
+
+    if (has("station", "tram stop", "subway", "light rail", "railway")) return "transit_rail";
+    if (has("bus stop")) return "transit_bus";
+    if (has("aerodrome", "airport", "helipad")) return "air";
+    if (has("historic")) return "historic";
+    if (has("office")) return "office";
+    if (has("craft")) return "craft";
+    if (has("peak", "volcano", "cliff", "beach")) return "nature";
+    if (has("administrative", "boundary")) return "admin";
+
+    return "place";
+  };
+
+  const resolvePoi = (payload) => {
+    const osmKey = String(payload.osmKey ?? payload.osm_key ?? "").trim();
+    const osmValue = String(payload.osmValue ?? payload.osm_value ?? "").trim();
+    const kindStr = String(payload.kind ?? "").trim();
+    const fromOsm = osmKey && osmValue ? derivePoiFromOsm(osmKey, osmValue) : "place";
+    const fromKind = kindStr ? derivePoiFromKind(kindStr) : "place";
+    const fromPayload = String(payload.poi ?? "").trim();
+
+    if (fromOsm !== "place") return fromOsm;
+    if (fromPayload && fromPayload !== "place") return fromPayload;
+    if (fromKind !== "place") return fromKind;
+    return "place";
+  };
+
   const parsePayloadFromSnippet = (snippet) => {
     const text = (snippet || "").trim();
-    const m = text.match(/^\[fullmap:([A-Za-z0-9_-]+=*)\]/i);
+    const m = text.match(/^\[fullmap:\s*([A-Za-z0-9_-]+=*)\s*\]/i);
     if (!m) return null;
     const token = m[1];
     const payload = decodeBase64UrlJson(token);
@@ -186,11 +288,9 @@
       const lat = Number(payload.lat);
       const lon = Number(payload.lon);
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
-      const osmKey = String(payload.osmKey || "");
-      const osmValue = String(payload.osmValue || "");
-      /** Prefer live client rules whenever OSM tags exist (fixes missing/stale `poi` in payload). */
-      const poi =
-        osmKey && osmValue ? derivePoiFromOsm(osmKey, osmValue) : String(payload.poi || "").trim() || "place";
+      const osmKey = String(payload.osmKey ?? payload.osm_key ?? "").trim();
+      const osmValue = String(payload.osmValue ?? payload.osm_value ?? "").trim();
+      const poi = resolvePoi(payload);
       places.push({
         id: String(payload.id || `${lat},${lon}`),
         name: String(payload.name || titleEl.textContent || "Place"),
