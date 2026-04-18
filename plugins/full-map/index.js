@@ -30,10 +30,28 @@ const humanizeKind = (feature) => {
   return raw.replace(/[_-]/g, " ");
 };
 
+/** Photon / Nominatim-style OSM tags (field names vary by build). */
+const normalizePhotonOsm = (props) => {
+  let k = sanitizeText(props.osm_key ?? props["osm:key"] ?? props.osmKey);
+  let v = sanitizeText(props.osm_value ?? props["osm:value"] ?? props.osmValue);
+  const t = sanitizeText(props.type);
+  if (!k && t.includes("/")) {
+    const parts = t.split("/");
+    k = sanitizeText(parts[0]).toLowerCase();
+    v = sanitizeText(parts.slice(1).join("/")).toLowerCase();
+  }
+  if (!k && props.class && t) {
+    k = sanitizeText(props.class).toLowerCase();
+    v = sanitizeText(t).toLowerCase();
+  }
+  return { osmKey: k, osmValue: v };
+};
+
 /** Compact POI bucket for map icons (client maps to emoji / color). */
 const pickPoiCategory = (props) => {
-  const k = sanitizeText(props.osm_key).toLowerCase();
-  const v = sanitizeText(props.osm_value).toLowerCase();
+  const { osmKey: kRaw, osmValue: vRaw } = normalizePhotonOsm(props);
+  const k = kRaw.toLowerCase();
+  const v = vRaw.toLowerCase();
 
   if (k === "amenity") {
     if (
@@ -43,7 +61,7 @@ const pickPoiCategory = (props) => {
     ) {
       return "food";
     }
-    if (["bar", "pub", "nightclub", "biergarten"].includes(v)) return "drink";
+    if (["bar", "pub", "nightclub"].includes(v)) return "drink";
     if (["pharmacy"].includes(v)) return "health";
     if (["hospital", "clinic", "doctors", "dentist", "veterinary"].includes(v)) return "medical";
     if (["bank", "atm", "bureau_de_change"].includes(v)) return "money";
@@ -212,7 +230,9 @@ const withTimeout = async (promise, ms = 2600) => {
 
 const serializePlace = (place) => {
   const token = toBase64Url(place);
-  return `${MAP_PAYLOAD_PREFIX}${token}${MAP_PAYLOAD_SUFFIX}${place.address || place.kind}`;
+  if (!token) return `${MAP_PAYLOAD_PREFIX}${MAP_PAYLOAD_SUFFIX}`;
+  /** Token only — do not append address (addresses may contain `]` and break clients). */
+  return `${MAP_PAYLOAD_PREFIX}${token}${MAP_PAYLOAD_SUFFIX}`;
 };
 
 const fullMapTab = {
@@ -254,6 +274,7 @@ const fullMapTab = {
       const country = sanitizeText(props.country);
       const kind = humanizeKind(feature);
       const url = buildOsmUrl(osmType, osmId, lat, lon);
+      const { osmKey: normKey, osmValue: normVal } = normalizePhotonOsm(props);
       const poi = pickPoiCategory(props);
       parsed.push({
         id: key,
@@ -263,8 +284,8 @@ const fullMapTab = {
         address,
         kind,
         poi,
-        osmKey: sanitizeText(props.osm_key),
-        osmValue: sanitizeText(props.osm_value),
+        osmKey: normKey,
+        osmValue: normVal,
         city,
         country,
         osmType,
