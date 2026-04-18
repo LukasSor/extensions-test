@@ -30,6 +30,95 @@ const humanizeKind = (feature) => {
   return raw.replace(/[_-]/g, " ");
 };
 
+/** Compact POI bucket for map icons (client maps to emoji / color). */
+const pickPoiCategory = (props) => {
+  const k = sanitizeText(props.osm_key).toLowerCase();
+  const v = sanitizeText(props.osm_value).toLowerCase();
+
+  if (k === "amenity") {
+    if (
+      ["restaurant", "cafe", "fast_food", "food_court", "ice_cream", "biergarten", "street_food"].includes(
+        v,
+      )
+    ) {
+      return "food";
+    }
+    if (["bar", "pub", "nightclub", "biergarten"].includes(v)) return "drink";
+    if (["pharmacy"].includes(v)) return "health";
+    if (["hospital", "clinic", "doctors", "dentist", "veterinary"].includes(v)) return "medical";
+    if (["bank", "atm", "bureau_de_change"].includes(v)) return "money";
+    if (["fuel", "charging_station"].includes(v)) return "fuel";
+    if (["parking", "parking_space", "bicycle_parking"].includes(v)) return "parking";
+    if (["place_of_worship"].includes(v)) return "worship";
+    if (["school", "kindergarten", "college", "university", "library"].includes(v)) {
+      return "education";
+    }
+    if (["theatre", "cinema", "arts_centre", "community_centre"].includes(v)) return "culture";
+    if (["post_office", "police", "fire_station", "townhall", "courthouse"].includes(v)) {
+      return "civic";
+    }
+    if (["toilets", "shower", "drinking_water", "shelter"].includes(v)) return "service";
+  }
+
+  if (k === "shop") {
+    if (["supermarket", "greengrocer", "bakery", "butcher", "convenience", "alcohol", "beverages"].includes(v)) {
+      return "grocery";
+    }
+    if (["mall", "department_store", "general"].includes(v)) return "shop_large";
+    if (["clothes", "shoes", "jewelry", "bag", "boutique"].includes(v)) return "fashion";
+    if (["electronics", "computer", "mobile_phone", "hifi"].includes(v)) return "tech";
+    if (["car", "car_parts", "bicycle", "motorcycle"].includes(v)) return "vehicle_shop";
+    if (["hairdresser", "beauty", "cosmetics"].includes(v)) return "beauty";
+    return "shop";
+  }
+
+  if (k === "tourism") {
+    if (["hotel", "motel", "guest_house", "hostel", "chalet", "apartment"].includes(v)) return "lodging";
+    if (["museum", "gallery", "artwork", "attraction", "viewpoint"].includes(v)) return "sight";
+    if (["information", "map"].includes(v)) return "info";
+    return "tourism";
+  }
+
+  if (k === "leisure") {
+    if (["park", "garden", "nature_reserve"].includes(v)) return "park";
+    if (["playground", "pitch", "sports_centre", "stadium", "swimming_pool", "fitness_centre"].includes(v)) {
+      return "sport";
+    }
+    return "leisure";
+  }
+
+  if (k === "railway") {
+    if (["station", "halt", "tram_stop", "subway_entrance", "light_rail"].includes(v)) return "transit_rail";
+    if (["platform"].includes(v)) return "transit_rail";
+  }
+
+  if (k === "highway") {
+    if (["bus_stop"].includes(v)) return "transit_bus";
+  }
+
+  if (k === "public_transport" || k === "route") {
+    return "transit";
+  }
+
+  if (k === "aeroway") {
+    if (["aerodrome", "terminal", "gate", "helipad"].includes(v)) return "air";
+  }
+
+  if (k === "historic") return "historic";
+
+  if (k === "office") return "office";
+
+  if (k === "craft") return "craft";
+
+  if (k === "natural") {
+    if (["peak", "volcano", "cliff", "water", "bay", "beach"].includes(v)) return "nature";
+  }
+
+  if (k === "boundary" && v === "administrative") return "admin";
+
+  return "place";
+};
+
 const buildAddress = (feature) => {
   const props = feature?.properties || {};
   const chunks = [
@@ -165,6 +254,7 @@ const fullMapTab = {
       const country = sanitizeText(props.country);
       const kind = humanizeKind(feature);
       const url = buildOsmUrl(osmType, osmId, lat, lon);
+      const poi = pickPoiCategory(props);
       parsed.push({
         id: key,
         name,
@@ -172,6 +262,9 @@ const fullMapTab = {
         lon,
         address,
         kind,
+        poi,
+        osmKey: sanitizeText(props.osm_key),
+        osmValue: sanitizeText(props.osm_value),
         city,
         country,
         osmType,

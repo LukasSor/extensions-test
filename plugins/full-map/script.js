@@ -27,6 +27,61 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
 
+  const POI_STYLES = {
+    food: { emoji: "🍽", bg: "#ea580c" },
+    drink: { emoji: "🍺", bg: "#9333ea" },
+    grocery: { emoji: "🛒", bg: "#16a34a" },
+    shop: { emoji: "🛍", bg: "#db2777" },
+    shop_large: { emoji: "🏬", bg: "#be185d" },
+    fashion: { emoji: "👕", bg: "#ec4899" },
+    tech: { emoji: "💻", bg: "#6366f1" },
+    vehicle_shop: { emoji: "🔧", bg: "#475569" },
+    beauty: { emoji: "💇", bg: "#f472b6" },
+    lodging: { emoji: "🏨", bg: "#0d9488" },
+    sight: { emoji: "🎭", bg: "#7c3aed" },
+    tourism: { emoji: "📷", bg: "#8b5cf6" },
+    info: { emoji: "ℹ️", bg: "#64748b" },
+    park: { emoji: "🌳", bg: "#15803d" },
+    sport: { emoji: "⚽", bg: "#22c55e" },
+    leisure: { emoji: "🎯", bg: "#14b8a6" },
+    transit_rail: { emoji: "🚉", bg: "#2563eb" },
+    transit_bus: { emoji: "🚌", bg: "#1d4ed8" },
+    transit: { emoji: "🚏", bg: "#1e40af" },
+    air: { emoji: "✈️", bg: "#0369a1" },
+    fuel: { emoji: "⛽", bg: "#b45309" },
+    parking: { emoji: "🅿️", bg: "#57534e" },
+    health: { emoji: "💊", bg: "#dc2626" },
+    medical: { emoji: "🏥", bg: "#b91c1c" },
+    money: { emoji: "🏧", bg: "#0f766e" },
+    education: { emoji: "🎓", bg: "#4f46e5" },
+    worship: { emoji: "⛪", bg: "#6d28d9" },
+    culture: { emoji: "🎬", bg: "#a21caf" },
+    civic: { emoji: "🏛", bg: "#334155" },
+    service: { emoji: "🚻", bg: "#78716c" },
+    historic: { emoji: "🏛️", bg: "#92400e" },
+    office: { emoji: "🏢", bg: "#475569" },
+    craft: { emoji: "🔨", bg: "#78716c" },
+    nature: { emoji: "🏔", bg: "#0f766e" },
+    admin: { emoji: "📍", bg: "#64748b" },
+    place: { emoji: "📍", bg: "#2563eb" },
+  };
+
+  const styleForPoi = (poi) => POI_STYLES[poi] || POI_STYLES.place;
+
+  const makeMarkerIcon = (Leaflet, poi, active) => {
+    const st = styleForPoi(poi);
+    const size = active ? 40 : 34;
+    const emoji = st.emoji;
+    const bg = st.bg;
+    return Leaflet.divIcon({
+      className: "fm-marker-wrap",
+      html: `<div class="fm-marker-pin${active ? " is-active" : ""}" style="--fm-pin-bg:${bg}"><span class="fm-marker-emoji">${emoji}</span></div>`,
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+      popupAnchor: [0, -Math.round(size / 2 + 2)],
+    });
+  };
+
   const isFullMapActive = () =>
     !!document.querySelector(`.results-tab.active[data-type="${TAB_TYPE}"]`);
 
@@ -72,6 +127,9 @@
         lon,
         address: String(payload.address || ""),
         kind: String(payload.kind || "place"),
+        poi: String(payload.poi || "place"),
+        osmKey: String(payload.osmKey || ""),
+        osmValue: String(payload.osmValue || ""),
         city: String(payload.city || ""),
         country: String(payload.country || ""),
         sourceUrl: String(payload.sourceUrl || titleEl.getAttribute("href") || "#"),
@@ -126,11 +184,16 @@
     const summary = place.wikiSummary
       ? `<p class="fm-info-summary">${esc(place.wikiSummary)}</p>`
       : `<p class="fm-info-summary">No rich description available for this place yet.</p>`;
+    const osmTag =
+      place.osmKey && place.osmValue
+        ? `<li><strong>OSM tag:</strong> <code>${esc(place.osmKey)}</code>=<code>${esc(place.osmValue)}</code></li>`
+        : "";
     const details = [
       place.address ? `<li><strong>Address:</strong> ${esc(place.address)}</li>` : "",
       place.city ? `<li><strong>City:</strong> ${esc(place.city)}</li>` : "",
       place.country ? `<li><strong>Country:</strong> ${esc(place.country)}</li>` : "",
       place.kind ? `<li><strong>Category:</strong> ${esc(place.kind)}</li>` : "",
+      osmTag,
       place.phone ? `<li><strong>Phone:</strong> ${esc(place.phone)}</li>` : "",
       place.openingHours ? `<li><strong>Opening:</strong> ${esc(place.openingHours)}</li>` : "",
       place.website
@@ -166,14 +229,17 @@
 
   const renderMapLayout = async (container, places) => {
     const listItems = places
-      .map(
-        (place, idx) => `
+      .map((place, idx) => {
+        const ico = styleForPoi(place.poi).emoji;
+        return `
       <button type="button" class="fm-result" data-fm-index="${idx}">
-        <div class="fm-result-title">${esc(place.name)}</div>
-        <div class="fm-result-sub">${esc(place.address || place.city || place.country || place.kind)}</div>
-      </button>
-    `,
-      )
+        <span class="fm-result-ico" aria-hidden="true">${ico}</span>
+        <span class="fm-result-text">
+          <span class="fm-result-title">${esc(place.name)}</span>
+          <span class="fm-result-sub">${esc(place.address || place.city || place.country || place.kind)}</span>
+        </span>
+      </button>`;
+      })
       .join("");
 
     container.innerHTML = `
@@ -308,6 +374,18 @@
     };
     applyMapTiles();
 
+    const markers = [];
+    let selectedIndex = -1;
+
+    const refreshMarkerIcons = () => {
+      markers.forEach((m, markerIdx) => {
+        const place = places[markerIdx];
+        if (!place) return;
+        const active = markerIdx === selectedIndex;
+        m.setIcon(makeMarkerIcon(L, place.poi, active));
+      });
+    };
+
     const syncPerspectiveUi = () => {
       const wrap = container.querySelector(".fm-map-wrap");
       if (!wrap) return;
@@ -332,19 +410,7 @@
 
     const onAppearanceChange = () => {
       applyMapTiles();
-      const dark = schemeIsDark();
-      const stroke = dark ? "#60a5fa" : "#1f6feb";
-      const fill = dark ? "#3b82f6" : "#2f81f7";
-      markers.forEach((m, markerIdx) => {
-        const active = markerIdx === selectedIndex;
-        m.setStyle({
-          color: stroke,
-          fillColor: fill,
-          radius: active ? 10 : 7,
-          weight: active ? 3 : 2,
-          fillOpacity: active ? 0.95 : 0.72,
-        });
-      });
+      refreshMarkerIcons();
       map.invalidateSize();
     };
 
@@ -380,8 +446,6 @@
       attributeFilter: ["data-theme"],
     });
 
-    const markers = [];
-    let selectedIndex = -1;
     let visibleIndexes = places.map((_, idx) => idx);
     const focusForIndexes = (indexes) => {
       if (indexes.length === 0) return;
@@ -423,18 +487,7 @@
         el.classList.toggle("is-active", match);
       });
 
-      const stroke = schemeIsDark() ? "#60a5fa" : "#1f6feb";
-      const fill = schemeIsDark() ? "#3b82f6" : "#2f81f7";
-      markers.forEach((m, markerIdx) => {
-        const active = markerIdx === idx;
-        m.setStyle({
-          color: stroke,
-          fillColor: fill,
-          radius: active ? 10 : 7,
-          weight: active ? 3 : 2,
-          fillOpacity: active ? 0.95 : 0.72,
-        });
-      });
+      refreshMarkerIcons();
 
       infoEl.innerHTML = buildInfoHtml(place);
       marker.bindPopup(`<strong>${esc(place.name)}</strong><br>${esc(place.address || place.kind)}`);
@@ -472,15 +525,10 @@
       }
     };
 
-    const markerStroke = schemeIsDark() ? "#60a5fa" : "#1f6feb";
-    const markerFill = schemeIsDark() ? "#3b82f6" : "#2f81f7";
     places.forEach((place, idx) => {
-      const marker = L.circleMarker([place.lat, place.lon], {
-        radius: 7,
-        color: markerStroke,
-        fillColor: markerFill,
-        fillOpacity: 0.72,
-        weight: 2,
+      const marker = L.marker([place.lat, place.lon], {
+        icon: makeMarkerIcon(L, place.poi, false),
+        title: place.name,
       }).addTo(map);
       marker.on("click", () => selectPlace(idx, true));
       markers.push(marker);
