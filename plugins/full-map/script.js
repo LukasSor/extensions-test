@@ -5,8 +5,12 @@
   const LEAFLET_CSS_ID = "full-map-leaflet-css";
   const LEAFLET_SRC = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
   const LEAFLET_CSS_SRC = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+  const FA_CSS_ID = "full-map-fontawesome-css";
+  /** Font Awesome 6 Free (all + webfonts); same CDN family as Leaflet unpkg. */
+  const FA_CSS_HREF = "https://unpkg.com/@fortawesome/fontawesome-free@6.5.2/css/all.min.css";
 
   let leafletPromise = null;
+  let fontAwesomePromise = null;
   let activeView = null;
   const setFullMapMode = (enabled) => {
     document.body.classList.toggle("full-map-mode", enabled);
@@ -27,55 +31,98 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
 
+  /** `icon`: Font Awesome 6 solid class suffix (e.g. fa-utensils). `fallback`: emoji if FA CSS fails. */
   const POI_STYLES = {
-    food: { emoji: "🍽", bg: "#ea580c" },
-    drink: { emoji: "🍺", bg: "#9333ea" },
-    grocery: { emoji: "🛒", bg: "#16a34a" },
-    shop: { emoji: "🛍", bg: "#db2777" },
-    shop_large: { emoji: "🏬", bg: "#be185d" },
-    fashion: { emoji: "👕", bg: "#ec4899" },
-    tech: { emoji: "💻", bg: "#6366f1" },
-    vehicle_shop: { emoji: "🔧", bg: "#475569" },
-    beauty: { emoji: "💇", bg: "#f472b6" },
-    lodging: { emoji: "🏨", bg: "#0d9488" },
-    sight: { emoji: "🎭", bg: "#7c3aed" },
-    tourism: { emoji: "📷", bg: "#8b5cf6" },
-    info: { emoji: "ℹ️", bg: "#64748b" },
-    park: { emoji: "🌳", bg: "#15803d" },
-    sport: { emoji: "⚽", bg: "#22c55e" },
-    leisure: { emoji: "🎯", bg: "#14b8a6" },
-    transit_rail: { emoji: "🚉", bg: "#2563eb" },
-    transit_bus: { emoji: "🚌", bg: "#1d4ed8" },
-    transit: { emoji: "🚏", bg: "#1e40af" },
-    air: { emoji: "✈️", bg: "#0369a1" },
-    fuel: { emoji: "⛽", bg: "#b45309" },
-    parking: { emoji: "🅿️", bg: "#57534e" },
-    health: { emoji: "💊", bg: "#dc2626" },
-    medical: { emoji: "🏥", bg: "#b91c1c" },
-    money: { emoji: "🏧", bg: "#0f766e" },
-    education: { emoji: "🎓", bg: "#4f46e5" },
-    worship: { emoji: "⛪", bg: "#6d28d9" },
-    culture: { emoji: "🎬", bg: "#a21caf" },
-    civic: { emoji: "🏛", bg: "#334155" },
-    service: { emoji: "🚻", bg: "#78716c" },
-    historic: { emoji: "🏛️", bg: "#92400e" },
-    office: { emoji: "🏢", bg: "#475569" },
-    craft: { emoji: "🔨", bg: "#78716c" },
-    nature: { emoji: "🏔", bg: "#0f766e" },
-    admin: { emoji: "📍", bg: "#64748b" },
-    place: { emoji: "📍", bg: "#2563eb" },
+    food: { icon: "fa-utensils", fallback: "🍽", bg: "#ea580c" },
+    drink: { icon: "fa-mug-saucer", fallback: "🍺", bg: "#9333ea" },
+    grocery: { icon: "fa-basket-shopping", fallback: "🛒", bg: "#16a34a" },
+    shop: { icon: "fa-bag-shopping", fallback: "🛍", bg: "#db2777" },
+    shop_large: { icon: "fa-store", fallback: "🏬", bg: "#be185d" },
+    fashion: { icon: "fa-shirt", fallback: "👕", bg: "#ec4899" },
+    tech: { icon: "fa-laptop", fallback: "💻", bg: "#6366f1" },
+    vehicle_shop: { icon: "fa-screwdriver-wrench", fallback: "🔧", bg: "#475569" },
+    beauty: { icon: "fa-spa", fallback: "💇", bg: "#f472b6" },
+    lodging: { icon: "fa-hotel", fallback: "🏨", bg: "#0d9488" },
+    sight: { icon: "fa-binoculars", fallback: "🎭", bg: "#7c3aed" },
+    tourism: { icon: "fa-camera", fallback: "📷", bg: "#8b5cf6" },
+    info: { icon: "fa-circle-info", fallback: "ℹ️", bg: "#64748b" },
+    park: { icon: "fa-tree", fallback: "🌳", bg: "#15803d" },
+    sport: { icon: "fa-futbol", fallback: "⚽", bg: "#22c55e" },
+    leisure: { icon: "fa-dice", fallback: "🎯", bg: "#14b8a6" },
+    transit_rail: { icon: "fa-train-subway", fallback: "🚉", bg: "#2563eb" },
+    transit_bus: { icon: "fa-bus", fallback: "🚌", bg: "#1d4ed8" },
+    transit: { icon: "fa-route", fallback: "🚏", bg: "#1e40af" },
+    air: { icon: "fa-plane-departure", fallback: "✈️", bg: "#0369a1" },
+    fuel: { icon: "fa-gas-pump", fallback: "⛽", bg: "#b45309" },
+    parking: { icon: "fa-square-parking", fallback: "🅿️", bg: "#57534e" },
+    health: { icon: "fa-pills", fallback: "💊", bg: "#dc2626" },
+    medical: { icon: "fa-hospital", fallback: "🏥", bg: "#b91c1c" },
+    money: { icon: "fa-building-columns", fallback: "🏧", bg: "#0f766e" },
+    education: { icon: "fa-graduation-cap", fallback: "🎓", bg: "#4f46e5" },
+    worship: { icon: "fa-place-of-worship", fallback: "⛪", bg: "#6d28d9" },
+    culture: { icon: "fa-masks-theater", fallback: "🎬", bg: "#a21caf" },
+    civic: { icon: "fa-landmark-flag", fallback: "🏛", bg: "#334155" },
+    service: { icon: "fa-restroom", fallback: "🚻", bg: "#78716c" },
+    historic: { icon: "fa-landmark", fallback: "🏛️", bg: "#92400e" },
+    office: { icon: "fa-building", fallback: "🏢", bg: "#475569" },
+    craft: { icon: "fa-hammer", fallback: "🔨", bg: "#78716c" },
+    nature: { icon: "fa-mountain-sun", fallback: "🏔", bg: "#0f766e" },
+    admin: { icon: "fa-map-location-dot", fallback: "📍", bg: "#64748b" },
+    place: { icon: "fa-location-dot", fallback: "📍", bg: "#2563eb" },
   };
 
   const styleForPoi = (poi) => POI_STYLES[poi] || POI_STYLES.place;
 
-  const makeMarkerIcon = (Leaflet, poi, active) => {
+  const ensureFontAwesome = () => {
+    if (document.getElementById(FA_CSS_ID)?.dataset.loaded === "1") {
+      return Promise.resolve(true);
+    }
+    if (fontAwesomePromise) return fontAwesomePromise;
+
+    fontAwesomePromise = new Promise((resolve) => {
+      let link = document.getElementById(FA_CSS_ID);
+      const ok = () => {
+        if (link) link.dataset.loaded = "1";
+        resolve(true);
+      };
+      const bad = () => {
+        fontAwesomePromise = null;
+        const failed = document.getElementById(FA_CSS_ID);
+        if (failed) failed.remove();
+        resolve(false);
+      };
+
+      if (!link) {
+        link = document.createElement("link");
+        link.id = FA_CSS_ID;
+        link.rel = "stylesheet";
+        link.href = FA_CSS_HREF;
+        link.onload = ok;
+        link.onerror = bad;
+        document.head.appendChild(link);
+      } else {
+        if (link.sheet || link.dataset.loaded === "1") {
+          link.dataset.loaded = "1";
+          resolve(true);
+          return;
+        }
+        link.onload = ok;
+        link.onerror = bad;
+      }
+    });
+    return fontAwesomePromise;
+  };
+
+  const makeMarkerIcon = (Leaflet, poi, active, useFa) => {
     const st = styleForPoi(poi);
     const size = active ? 40 : 34;
-    const emoji = st.emoji;
     const bg = st.bg;
+    const inner = useFa
+      ? `<i class="fa-solid ${st.icon} fm-marker-fa" aria-hidden="true"></i>`
+      : `<span class="fm-marker-emoji">${st.fallback}</span>`;
     return Leaflet.divIcon({
       className: "fm-marker-wrap",
-      html: `<div class="fm-marker-pin${active ? " is-active" : ""}" style="--fm-pin-bg:${bg}"><span class="fm-marker-emoji">${emoji}</span></div>`,
+      html: `<div class="fm-marker-pin${active ? " is-active" : ""}" style="--fm-pin-bg:${bg}">${inner}</div>`,
       iconSize: [size, size],
       iconAnchor: [size / 2, size / 2],
       popupAnchor: [0, -Math.round(size / 2 + 2)],
@@ -399,12 +446,27 @@
   };
 
   const renderMapLayout = async (container, places) => {
+    const [L, faOk] = await Promise.all([
+      ensureLeaflet().catch(() => null),
+      ensureFontAwesome().catch(() => false),
+    ]);
+    const useFaIcons = faOk === true;
+
+    if (!L) {
+      container.innerHTML =
+        '<section class="full-map-root"><p class="fm-error">Map library failed to load.</p></section>';
+      return;
+    }
+
     const listItems = places
       .map((place, idx) => {
-        const ico = styleForPoi(place.poi).emoji;
+        const st = styleForPoi(place.poi);
+        const ico = useFaIcons
+          ? `<span class="fm-result-ico fm-result-ico--fa" style="--fm-ico:${st.bg}" aria-hidden="true"><i class="fa-solid ${st.icon}"></i></span>`
+          : `<span class="fm-result-ico" aria-hidden="true">${st.fallback}</span>`;
         return `
       <button type="button" class="fm-result" data-fm-index="${idx}">
-        <span class="fm-result-ico" aria-hidden="true">${ico}</span>
+        ${ico}
         <span class="fm-result-text">
           <span class="fm-result-title">${esc(place.name)}</span>
           <span class="fm-result-sub">${esc(place.address || place.city || place.country || place.kind)}</span>
@@ -450,12 +512,6 @@
     const filterInput = container.querySelector(".fm-search-input");
     const searchBtn = container.querySelector(".fm-search-button");
     if (!root || !mapEl || !infoEl || !resultsEl || !filterInput || !searchBtn) return;
-
-    const L = await ensureLeaflet().catch(() => null);
-    if (!L) {
-      mapEl.innerHTML = '<p class="fm-error">Map library failed to load.</p>';
-      return;
-    }
 
     const map = L.map(mapEl, { zoomControl: true, preferCanvas: true });
 
@@ -553,7 +609,7 @@
         const place = places[markerIdx];
         if (!place) return;
         const active = markerIdx === selectedIndex;
-        m.setIcon(makeMarkerIcon(L, place.poi, active));
+        m.setIcon(makeMarkerIcon(L, place.poi, active, useFaIcons));
       });
     };
 
@@ -698,7 +754,7 @@
 
     places.forEach((place, idx) => {
       const marker = L.marker([place.lat, place.lon], {
-        icon: makeMarkerIcon(L, place.poi, false),
+        icon: makeMarkerIcon(L, place.poi, false, useFaIcons),
         title: place.name,
       }).addTo(map);
       marker.on("click", () => selectPlace(idx, true));
