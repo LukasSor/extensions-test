@@ -207,12 +207,61 @@
     }
 
     const map = L.map(mapEl, { zoomControl: true, preferCanvas: true });
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+
+    const CARTO_LIGHT = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+    const CARTO_DARK = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+    const tileOpts = {
       maxZoom: 19,
       subdomains: "abcd",
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    }).addTo(map);
+    };
+
+    const schemeIsDark = () => {
+      const t = document.documentElement.getAttribute("data-theme");
+      if (t === "dark") return true;
+      if (t === "light") return false;
+      return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    };
+
+    let baseTileLayer = null;
+    const applyBasemapForScheme = () => {
+      const dark = schemeIsDark();
+      const url = dark ? CARTO_DARK : CARTO_LIGHT;
+      if (baseTileLayer) {
+        map.removeLayer(baseTileLayer);
+        baseTileLayer = null;
+      }
+      baseTileLayer = L.tileLayer(url, tileOpts).addTo(map);
+    };
+    applyBasemapForScheme();
+
+    const onAppearanceChange = () => {
+      applyBasemapForScheme();
+      const dark = schemeIsDark();
+      const stroke = dark ? "#60a5fa" : "#1f6feb";
+      const fill = dark ? "#3b82f6" : "#2f81f7";
+      markers.forEach((m, markerIdx) => {
+        const active = markerIdx === selectedIndex;
+        m.setStyle({
+          color: stroke,
+          fillColor: fill,
+          radius: active ? 10 : 7,
+          weight: active ? 3 : 2,
+          fillOpacity: active ? 0.95 : 0.72,
+        });
+      });
+      map.invalidateSize();
+    };
+
+    const schemeMq = window.matchMedia("(prefers-color-scheme: dark)");
+    schemeMq.addEventListener("change", onAppearanceChange);
+
+    const schemeObserver = new MutationObserver(onAppearanceChange);
+    schemeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
 
     const markers = [];
     let selectedIndex = -1;
@@ -257,9 +306,13 @@
         el.classList.toggle("is-active", match);
       });
 
+      const stroke = schemeIsDark() ? "#60a5fa" : "#1f6feb";
+      const fill = schemeIsDark() ? "#3b82f6" : "#2f81f7";
       markers.forEach((m, markerIdx) => {
         const active = markerIdx === idx;
         m.setStyle({
+          color: stroke,
+          fillColor: fill,
           radius: active ? 10 : 7,
           weight: active ? 3 : 2,
           fillOpacity: active ? 0.95 : 0.72,
@@ -302,11 +355,13 @@
       }
     };
 
+    const markerStroke = schemeIsDark() ? "#60a5fa" : "#1f6feb";
+    const markerFill = schemeIsDark() ? "#3b82f6" : "#2f81f7";
     places.forEach((place, idx) => {
       const marker = L.circleMarker([place.lat, place.lon], {
         radius: 7,
-        color: "#1f6feb",
-        fillColor: "#2f81f7",
+        color: markerStroke,
+        fillColor: markerFill,
         fillOpacity: 0.72,
         weight: 2,
       }).addTo(map);
@@ -349,6 +404,8 @@
 
     activeView = {
       teardown() {
+        schemeMq.removeEventListener("change", onAppearanceChange);
+        schemeObserver.disconnect();
         window.removeEventListener("resize", onResize);
         map.remove();
         setFullMapMode(false);
