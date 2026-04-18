@@ -137,6 +137,19 @@ html[data-theme="light"] .full-map-root {
   margin-top: 0.05rem;
 }
 
+.fm-result-ico--fa {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  color: var(--fm-ico, var(--text-primary, #1e293b));
+}
+
+.fm-result-ico--fa .fa-solid {
+  font-size: 1rem;
+  line-height: 1;
+}
+
 .fm-result-text {
   flex: 1;
   min-width: 0;
@@ -384,4 +397,16 @@ html[data-theme="light"] .full-map-root {
 
 .fm-marker-pin.is-active .fm-marker-emoji {
   font-size: 1.05rem;
+}
+
+.fm-marker-fa {
+  font-size: 0.88rem;
+  line-height: 1;
+  color: #fff;
+  user-select: none;
+  pointer-events: none;
+}
+
+.fm-marker-pin.is-active .fm-marker-fa {
+  font-size: 1rem;
 }

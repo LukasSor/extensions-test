@@ -147,7 +147,7 @@
         "path": "plugins/full-map",
         "name": "Full Map",
         "description": "Large OpenStreetMap tab with a place list, interactive markers, and place detail cards with optional Wikipedia media/context.",
-        "version": "1.0.6",
+        "version": "1.0.7",
         "type": "search-result-tab"
       }
     ],
