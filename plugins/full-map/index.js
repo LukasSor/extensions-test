@@ -650,35 +650,12 @@ const FULL_MAP_SETTINGS_SCHEMA = [
   },
 ];
 
-/**
- * Bang command so this folder appears under Settings → Plugins (search tabs are not listed there).
- * Shares `plugin-full-map` settings with the tab via `settingsId`.
- */
-const fullMapSettingsCommand = {
-  name: "Full Map",
-  description:
-    "Tripadvisor API key for the Full Map search tab. Map search runs in the Full Map results tab, not here.",
-  trigger: "fullmap",
-  settingsSchema: FULL_MAP_SETTINGS_SCHEMA,
-  configure(settings) {
-    tripadvisorApiKey = safeTrim(settings?.tripadvisorApiKey);
-  },
-  async execute() {
-    return {
-      title: "Full Map",
-      html: `<div class="command-result"><p>Set your Tripadvisor key under <strong>Settings → Plugins</strong> → <strong>Full Map</strong> → Configure. Open the <strong>Full Map</strong> tab on the results page to search places on the map.</p></div>`,
-    };
-  },
-};
-
 const fullMapTab = {
   id: "full-map",
   name: "Full Map",
   description:
-    "Map tab for place search (Photon / OSM), optional Tripadvisor ratings and Wikipedia context. Configure the Tripadvisor API key under Settings → Plugins → Full Map.",
+    "Map tab for place search (Photon / OSM), optional Tripadvisor ratings and Wikipedia context. Tripadvisor key: Settings → Plugins → Full Map (plugin-full-map) → Configure.",
   icon: "map",
-  /** Same settings record as the command in this folder (`plugin-full-map`). */
-  settingsId: "plugin-full-map",
 
   async executeSearch(query, page = 1) {
     const q = safeTrim(query);
@@ -792,5 +769,25 @@ const fullMapTab = {
   },
 };
 
-export const tab = fullMapTab;
-export default fullMapSettingsCommand;
+/**
+ * One default export: degoog’s tab loader reads `default.tab` (or named `tab`); the command loader
+ * uses `default` as the bang command when it has name/trigger/execute. Keeps a single module surface
+ * so both registries accept this file.
+ */
+export default {
+  tab: fullMapTab,
+  name: "Full Map",
+  description:
+    "Tripadvisor API key for the Full Map search tab. Map search runs in the Full Map results tab.",
+  trigger: "fullmap",
+  settingsSchema: FULL_MAP_SETTINGS_SCHEMA,
+  configure(settings) {
+    tripadvisorApiKey = safeTrim(settings?.tripadvisorApiKey);
+  },
+  async execute() {
+    return {
+      title: "Full Map",
+      html: `<div class="command-result"><p>Open <strong>Settings → Plugins</strong>, find <strong>Full Map</strong> (plugin id <code>plugin-full-map</code>), click <strong>Configure</strong>, and paste your Tripadvisor Content API key. Then use the <strong>Full Map</strong> tab in search results for the map.</p></div>`,
+    };
+  },
+};
