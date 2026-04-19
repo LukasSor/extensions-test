@@ -640,6 +640,8 @@ const serializePlace = (place) => {
 const fullMapTab = {
   id: "full-map",
   name: "Full Map",
+  description:
+    "Map tab for place search (Photon / OSM), optional Tripadvisor ratings and Wikipedia context. Configure the API key under Plugins.",
   icon: "map",
 
   settingsSchema: [
