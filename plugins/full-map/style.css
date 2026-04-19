@@ -391,6 +391,13 @@ html[data-theme="light"] .full-map-root {
   font-weight: 600;
 }
 
+.fm-ta-bubble-rating {
+  display: block;
+  max-width: 140px;
+  height: auto;
+  margin: 0.35rem 0 0.15rem;
+}
+
 .fm-ta-legal {
   margin: 0.4rem 0 0;
   font-size: 0.72rem;

@@ -146,8 +146,8 @@
       {
         "path": "plugins/full-map",
         "name": "Full Map",
-        "description": "Large OpenStreetMap tab with a place list, interactive markers, and place detail cards with optional Wikipedia media/context. Tripadvisor key: Settings → Engines → Full Map (Tripadvisor) → Configure.",
-        "version": "1.2.7",
+        "description": "Large OpenStreetMap tab with a place list, interactive markers, and place detail cards with optional Wikipedia media/context. Tripadvisor key: Settings → Engines → Maps → Full Map (Tripadvisor) → Configure.",
+        "version": "1.2.9",
         "type": "search-result-tab",
         "dependencies": ["https://github.com/LukasSor/extensions-test/engines/full-map-tripadvisor"]
       }
@@ -184,8 +184,8 @@
       {
         "path": "engines/full-map-tripadvisor",
         "name": "Full Map (Tripadvisor)",
-        "description": "Stores the Tripadvisor Content API key for the Full Map tab. It is a real engine entry in Settings → Engines but returns no web results — leave it disabled as a default search engine.",
-        "version": "1.0.0"
+        "description": "Stores the Tripadvisor Content API key for the Full Map tab. Appears under Settings → Engines in the Maps section (not Web); returns no search results — leave disabled as a default engine.",
+        "version": "1.0.2"
       },
       {
         "path": "engines/ecosia",

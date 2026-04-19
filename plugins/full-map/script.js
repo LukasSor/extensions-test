@@ -319,6 +319,17 @@
     return Number.isFinite(x) ? x : fallback;
   };
 
+  /** Route remote images through degoog proxy (Wikipedia / Tripadvisor CDNs, mixed content). */
+  const proxiedImageSrc = (url) => {
+    const u = String(url || "").trim();
+    if (!u) return "";
+    if (u.startsWith("/api/proxy/image")) return u;
+    if (u.startsWith("http://") || u.startsWith("https://")) {
+      return `/api/proxy/image?url=${encodeURIComponent(u)}`;
+    }
+    return u;
+  };
+
   const parsePayloadFromSnippet = (snippet) => {
     const text = (snippet || "").trim();
     const m = text.match(/^\[fullmap:\s*([A-Za-z0-9_-]+=*)\s*\]/i);
@@ -366,6 +377,7 @@
         reviewMax: finiteOr(payload.reviewMax, 5) ?? 5,
         reviewCount: finiteOr(payload.reviewCount, null),
         reviewUrl: String(payload.reviewUrl || ""),
+        reviewImageUrl: String(payload.reviewImageUrl || ""),
         reviewSource: String(payload.reviewSource || ""),
         reviewName: String(payload.reviewName || ""),
         osmStars: finiteOr(payload.osmStars, null),
@@ -422,14 +434,21 @@
         extCount != null && extCount > 0
           ? `<span class="fm-rating-note"> · ${esc(String(extCount.toLocaleString()))} reviews</span>`
           : "";
+      const bubbleImg = place.reviewImageUrl
+        ? `<img class="fm-ta-bubble-rating" src="${esc(proxiedImageSrc(place.reviewImageUrl))}" width="120" height="22" alt="${esc(`${extRating.toFixed(1)} of ${extMax}`)}" loading="lazy">`
+        : "";
       const link = place.reviewUrl
         ? `<p class="fm-review-actions"><a class="fm-review-link" href="${esc(place.reviewUrl)}" target="_blank" rel="noopener">Open on Tripadvisor</a></p>`
         : "";
+      const starFallback = bubbleImg
+        ? ""
+        : `<div class="fm-star-track" aria-hidden="true"><div class="fm-star-fill" style="width:${fill}%"></div></div>`;
       return `<div class="fm-rating fm-rating--tripadvisor">
           <div class="fm-rating-head">
             <span class="fm-rating-score">${esc(extRating.toFixed(1))}</span><span class="fm-rating-out">/${esc(String(extMax))}</span>${countBit}
           </div>
-          <div class="fm-star-track" aria-hidden="true"><div class="fm-star-fill" style="width:${fill}%"></div></div>
+          ${bubbleImg}
+          ${starFallback}
           ${link}
           <p class="fm-ta-legal">Tripadvisor traveler ratings — nearby listing match; follow <a href="https://tripadvisor-content-api.readme.io/reference/display-requirements" target="_blank" rel="noopener">display requirements</a> for production.</p>
         </div>`;
@@ -462,7 +481,7 @@
 
   const buildInfoHtml = (place) => {
     const image = place.image
-      ? `<img class="fm-info-image" src="${esc(place.image)}" alt="" loading="lazy">`
+      ? `<img class="fm-info-image" src="${esc(proxiedImageSrc(place.image))}" alt="" loading="lazy">`
       : "";
     const summary = place.wikiSummary
       ? `<p class="fm-info-summary">${esc(place.wikiSummary)}</p>`
@@ -489,7 +508,7 @@
     const ratingInner = formatRatingBlock(place);
     const ratingsSection = ratingInner
       ? `<div class="fm-reviews"><h4>Ratings</h4>${ratingInner}</div>`
-      : `<div class="fm-reviews"><h4>Ratings</h4><p class="fm-reviews-none">No star data yet. Add a <strong>Tripadvisor Content</strong> API key under Settings → Plugins → Full Map, or use OSM tags such as <code>stars</code> / UK <code>fhrs:rating</code> when present.</p></div>`;
+      : `<div class="fm-reviews"><h4>Ratings</h4><p class="fm-reviews-none">No star data yet. Add a <strong>Tripadvisor Content</strong> API key under <strong>Settings → Engines → Maps → Full Map (Tripadvisor)</strong>, or use OSM tags such as <code>stars</code> / UK <code>fhrs:rating</code> when present.</p></div>`;
 
     const wikiBackground = place.wikiTitle
       ? `<div class="fm-background"><h4>Background</h4><p>Wikipedia article: ${esc(place.wikiTitle)}</p></div>`

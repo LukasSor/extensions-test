@@ -1,10 +1,15 @@
 /**
  * Companion engine for the Full Map search-result tab: holds the Tripadvisor
  * Content API key under Settings → Engines (same flow as other plugin engines).
- * executeSearch returns no rows — do not rely on this for web SERPs.
+ * executeSearch returns no rows — settings only; not a web search engine.
  */
-export const type = "web";
-export const outgoingHosts = ["api.content.tripadvisor.com"];
+export const type = "maps";
+export const outgoingHosts = [
+  "api.content.tripadvisor.com",
+  "static.tacdn.com",
+  "www.tripadvisor.com",
+  "tripadvisor.com",
+];
 export const disabledByDefault = true;
 
 export default class FullMapTripadvisorEngine {

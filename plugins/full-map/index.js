@@ -264,7 +264,7 @@ let cacheLoadPromise = null;
 let cacheDirty = false;
 
 const emptyEnrichmentCache = () => ({
-  v: 3,
+  v: 4,
   nominatim: {},
   tripadvisor: {},
   wiki: {},
@@ -304,13 +304,13 @@ const ensureEnrichmentCacheLoaded = async () => {
       if (
         parsed &&
         typeof parsed === "object" &&
-        (parsed.v === 2 || parsed.v === 3) &&
+        (parsed.v === 2 || parsed.v === 3 || parsed.v === 4) &&
         parsed.nominatim &&
         parsed.tripadvisor &&
         parsed.wiki
       ) {
         enrichmentCache = {
-          v: 3,
+          v: 4,
           nominatim: { ...parsed.nominatim },
           tripadvisor: { ...parsed.tripadvisor },
           wiki: { ...parsed.wiki },
@@ -403,19 +403,78 @@ const pluginSettingsPath = () =>
   process.env.DEGOOG_PLUGIN_SETTINGS_FILE ??
   join(process.env.DEGOOG_DATA_DIR ?? join(process.cwd(), "data"), "plugin-settings.json");
 
-/** Tripadvisor key from Settings → Engines → Full Map (Tripadvisor) → Configure. */
+/** Normalizes values as stored in plugin-settings.json (string, string[], or masked). */
+const asPluginStoredString = (v) => {
+  if (v == null || v === "__SET__") return "";
+  if (typeof v === "string") return safeTrim(v);
+  if (Array.isArray(v)) return safeTrim(String(v[0] ?? ""));
+  return "";
+};
+
+/** Tripadvisor key from Settings → Engines → Maps → Full Map (Tripadvisor) → Configure. */
 const readTripadvisorKeyFromEngineSettings = async () => {
   try {
     const raw = await readFile(pluginSettingsPath(), "utf-8");
     const all = JSON.parse(raw);
-    const v = all[FULL_MAP_TA_ENGINE_ID]?.tripadvisorApiKey;
-    return typeof v === "string" ? safeTrim(v) : "";
+    const fromEngine = asPluginStoredString(all[FULL_MAP_TA_ENGINE_ID]?.tripadvisorApiKey);
+    if (fromEngine) return fromEngine;
+    return asPluginStoredString(all["tab-full-map"]?.tripadvisorApiKey);
   } catch {
     return "";
   }
 };
 
 const TRIPADVISOR_API = "https://api.content.tripadvisor.com/api/v1/location";
+
+const TA_FETCH_HEADERS = {
+  Accept: "application/json",
+  "User-Agent": "degoog-full-map-tab/1.2 (https://github.com/fccview/degoog)",
+};
+
+/** Unwrap Content API envelopes: `{ data: ... }`, nested `data`, or top-level array. */
+const unwrapTripadvisorEntity = (body) => {
+  if (body == null) return null;
+  if (Array.isArray(body)) {
+    const first = body[0];
+    return first && typeof first === "object" ? first : null;
+  }
+  let cur = body;
+  for (let depth = 0; depth < 6; depth++) {
+    if (Array.isArray(cur)) {
+      const first = cur[0];
+      return first && typeof first === "object" ? first : null;
+    }
+    if (!cur || typeof cur !== "object") return null;
+    if (cur.error) return null;
+    if ("data" in cur && cur.data != null) {
+      cur = cur.data;
+      continue;
+    }
+    return cur;
+  }
+  return null;
+};
+
+const sumReviewRatingCount = (obj) => {
+  if (!obj || typeof obj !== "object") return null;
+  let sum = 0;
+  for (const v of Object.values(obj)) {
+    const n = Number(String(v).replace(/,/g, ""));
+    if (Number.isFinite(n) && n > 0) sum += n;
+  }
+  return sum > 0 ? sum : null;
+};
+
+const tripadvisorNearbyRows = (json) => {
+  const raw = json?.data;
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === "object") {
+    const cand = raw.locations ?? raw.results ?? raw.items;
+    if (Array.isArray(cand)) return cand;
+  }
+  if (Array.isArray(json?.locations)) return json.locations;
+  return [];
+};
 
 const nominatimOsmIdParam = (osmType, osmId) => {
   const t = safeTrim(osmType).toUpperCase();
@@ -557,19 +616,39 @@ const mergeExtratagsIntoPlace = (place, ext) => {
 };
 
 const tripadvisorDetailsToReview = (detail, fallbackName) => {
-  const d = detail?.data ?? detail;
+  const d = unwrapTripadvisorEntity(detail);
   if (!d || typeof d !== "object") return null;
-  const rating = Number(String(d.rating ?? d.rating_string ?? "").replace(",", "."));
-  const numRaw = d.num_reviews ?? d.number_reviews ?? d.review_count ?? d.reviews_count;
-  const reviewCount = Number(String(numRaw ?? "").replace(/,/g, ""));
+
+  const ratingRaw =
+    d.rating ?? d.rating_string ?? d.overall_rating ?? d.bubble_rating ?? d.bubbleRating;
+  const rating = Number(String(ratingRaw ?? "").replace(/,/g, "."));
+  const numRaw =
+    d.num_reviews ??
+    d.number_reviews ??
+    d.review_count ??
+    d.reviews_count ??
+    d.numReviews;
+  let reviewCount = Number(String(numRaw ?? "").replace(/,/g, ""));
+  if (!Number.isFinite(reviewCount) || reviewCount < 0) {
+    const fromBreakdown = sumReviewRatingCount(d.review_rating_count);
+    reviewCount = fromBreakdown != null ? fromBreakdown : 0;
+  }
+
   if (!Number.isFinite(rating) || rating <= 0) return null;
+
+  const reviewUrl = sanitizeText(
+    d.web_url ?? d.website ?? d.url ?? d.write_review ?? d.hotel_booking?.booking_url,
+  );
+  const reviewImageUrl = sanitizeText(d.rating_image_url ?? d.ratingImageUrl);
+
   return {
     reviewRating: rating,
     reviewMax: 5,
     reviewCount: Number.isFinite(reviewCount) && reviewCount >= 0 ? reviewCount : 0,
-    reviewUrl: sanitizeText(d.web_url ?? d.website ?? d.url),
+    reviewUrl,
     reviewSource: "tripadvisor",
     reviewName: sanitizeText(d.name) || sanitizeText(fallbackName),
+    reviewImageUrl,
   };
 };
 
@@ -580,7 +659,7 @@ const fetchTripadvisorLocationDetails = async (locationId, key) => {
   url.searchParams.set("key", key);
   url.searchParams.set("language", "en");
   const res = await fetch(url.toString(), {
-    headers: { Accept: "application/json" },
+    headers: TA_FETCH_HEADERS,
   }).catch(() => null);
   if (!res?.ok) return null;
   return res.json().catch(() => null);
@@ -605,7 +684,7 @@ const pickBestTripadvisorNearby = (rows, placeName) => {
   scored.sort((a, b) => b.score - a.score || a.dist - b.dist);
   const top = scored[0];
   const r = top?.r;
-  const lid = r?.location_id ?? r?.locationId;
+  const lid = r?.location_id ?? r?.locationId ?? r?.locationID;
   if (r == null || lid == null) return null;
   return { ...r, location_id: lid };
 };
@@ -619,15 +698,15 @@ const fetchTripadvisorMatchUncached = async (place, tripadvisorApiKey) => {
   const url = new URL(`${TRIPADVISOR_API}/nearby_search`);
   url.searchParams.set("latLong", `${place.lat},${place.lon}`);
   url.searchParams.set("key", tripadvisorApiKey);
-  url.searchParams.set("radius", "0.4");
+  url.searchParams.set("radius", "2");
   url.searchParams.set("radiusUnit", "km");
   url.searchParams.set("language", "en");
   const res = await fetch(url.toString(), {
-    headers: { Accept: "application/json" },
+    headers: TA_FETCH_HEADERS,
   }).catch(() => null);
   if (!res?.ok) return { review: null, cacheable: false };
   const json = await res.json().catch(() => null);
-  const rows = Array.isArray(json?.data) ? json.data : [];
+  const rows = tripadvisorNearbyRows(json);
   const best = pickBestTripadvisorNearby(rows, place.name);
   if (!best) return { review: null, cacheable: true };
   const details = await fetchTripadvisorLocationDetails(
@@ -660,8 +739,10 @@ const serializePlace = (place) => {
 const fullMapTab = {
   id: "full-map",
   name: "Full Map",
+  /** Matches plugin engine `type` "maps" so search tabs merge and Tripadvisor settings sit under Engines → Maps. */
+  engineType: "maps",
   description:
-    "Map tab for place search (Photon / OSM), optional Tripadvisor ratings and Wikipedia context. Tripadvisor key: Settings → Engines → Full Map (Tripadvisor) → Configure.",
+    "Map tab for place search (Photon / OSM), optional Tripadvisor ratings and Wikipedia context. Tripadvisor key: Settings → Engines → Maps → Full Map (Tripadvisor) → Configure.",
   icon: "map",
 
   async executeSearch(query, page = 1) {
