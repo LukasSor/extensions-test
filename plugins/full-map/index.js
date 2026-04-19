@@ -251,9 +251,12 @@ const CACHE_FILE = join(DATA_DIR, "plugins", "full-map-enrichment-cache.json");
 
 const TTL_MS = {
   nominatim: 14 * 24 * 60 * 60 * 1000,
+  /** Rating/photos refresh after 30 days. Most places don't change meaningfully sooner. */
   tripadvisor: 30 * 24 * 60 * 60 * 1000,
   wiki: 7 * 24 * 60 * 60 * 1000,
   negative: 3 * 24 * 60 * 60 * 1000,
+  /** Tripadvisor negative cache: places rarely appear post-miss, keep for 21 days to save calls. */
+  tripadvisorNegative: 21 * 24 * 60 * 60 * 1000,
 };
 
 const MAX_CACHE_ENTRIES_PER_BUCKET = 2000;
@@ -264,7 +267,7 @@ let cacheLoadPromise = null;
 let cacheDirty = false;
 
 const emptyEnrichmentCache = () => ({
-  v: 4,
+  v: 5,
   nominatim: {},
   tripadvisor: {},
   wiki: {},
@@ -304,13 +307,13 @@ const ensureEnrichmentCacheLoaded = async () => {
       if (
         parsed &&
         typeof parsed === "object" &&
-        (parsed.v === 2 || parsed.v === 3 || parsed.v === 4) &&
+        parsed.v === 5 &&
         parsed.nominatim &&
         parsed.tripadvisor &&
         parsed.wiki
       ) {
         enrichmentCache = {
-          v: 4,
+          v: 5,
           nominatim: { ...parsed.nominatim },
           tripadvisor: { ...parsed.tripadvisor },
           wiki: { ...parsed.wiki },
@@ -350,7 +353,8 @@ const nominatimCacheSet = (key, ext) => {
 const reviewCacheGet = (bucket, id) => {
   const e = enrichmentCache?.[bucket]?.[id];
   if (!e) return undefined;
-  const ttl = e.miss ? TTL_MS.negative : TTL_MS[bucket];
+  const negTtl = bucket === "tripadvisor" ? TTL_MS.tripadvisorNegative : TTL_MS.negative;
+  const ttl = e.miss ? negTtl : TTL_MS[bucket];
   if (!isFresh(e.ts, ttl)) return undefined;
   return e.miss ? null : e.patch ?? null;
 };
@@ -709,6 +713,17 @@ const tripadvisorDetailsToReview = (detail, fallbackName) => {
   );
   const reviewImageUrl = sanitizeText(d.rating_image_url ?? d.ratingImageUrl);
 
+  const weekday = Array.isArray(d.hours?.weekday_text)
+    ? d.hours.weekday_text.map((s) => sanitizeText(s)).filter(Boolean).slice(0, 7)
+    : [];
+  const description = sanitizeText(d.description);
+  const phone = sanitizeText(d.phone);
+  const website = sanitizeText(d.website);
+  const addressString = sanitizeText(d.address_obj?.address_string);
+  const categoryName = sanitizeText(d.category?.localized_name ?? d.category?.name);
+  const rankingString = sanitizeText(d.ranking_data?.ranking_string);
+  const priceLevel = sanitizeText(d.price_level);
+
   return {
     reviewRating: rating,
     reviewMax: 5,
@@ -717,7 +732,76 @@ const tripadvisorDetailsToReview = (detail, fallbackName) => {
     reviewSource: "tripadvisor",
     reviewName: sanitizeText(d.name) || sanitizeText(fallbackName),
     reviewImageUrl,
+    /** Rich details merged into place so the detail panel can render them. */
+    taDescription: description ? description.slice(0, 700) : "",
+    taPhone: phone,
+    taWebsite: website,
+    taAddress: addressString,
+    taCategory: categoryName,
+    taRankingString: rankingString,
+    taPriceLevel: priceLevel,
+    taWeekdayHours: weekday,
+    taLocationId: sanitizeText(String(d.location_id ?? d.locationId ?? "")),
   };
+};
+
+/** Normalize a photo row to `{ src, caption }` using the largest sensible variant. */
+const mapTripadvisorPhoto = (row) => {
+  const imgs = row?.images ?? {};
+  const url =
+    imgs.original?.url ??
+    imgs.large?.url ??
+    imgs.medium?.url ??
+    imgs.small?.url ??
+    imgs.thumbnail?.url ??
+    "";
+  const src = sanitizeText(url);
+  if (!src) return null;
+  return { src, caption: sanitizeText(row?.caption) };
+};
+
+const fetchTripadvisorPhotos = async (locationId, key) => {
+  const id = Number(locationId);
+  if (!Number.isFinite(id)) return [];
+  const url = new URL(`${TRIPADVISOR_API}/${id}/photos`);
+  url.searchParams.set("key", key);
+  url.searchParams.set("language", "en");
+  url.searchParams.set("limit", "6");
+  const res = await fetch(url.toString(), { headers: TA_FETCH_HEADERS }).catch(() => null);
+  if (!res?.ok) return [];
+  const body = await res.json().catch(() => null);
+  const rows = Array.isArray(body?.data) ? body.data : [];
+  return rows.map(mapTripadvisorPhoto).filter(Boolean).slice(0, 6);
+};
+
+/** Normalize a review row to the minimum payload the UI needs. */
+const mapTripadvisorReview = (row) => {
+  const title = sanitizeText(row?.title);
+  const text = sanitizeText(row?.text);
+  if (!title && !text) return null;
+  return {
+    title,
+    text: text ? text.slice(0, 480) : "",
+    rating: Number(row?.rating) || null,
+    ratingImageUrl: sanitizeText(row?.rating_image_url ?? row?.ratingImageUrl),
+    date: sanitizeText(row?.published_date ?? row?.publishedDate).slice(0, 10),
+    user: sanitizeText(row?.user?.username ?? row?.user?.user_profile?.username),
+    url: sanitizeText(row?.url),
+  };
+};
+
+const fetchTripadvisorReviews = async (locationId, key) => {
+  const id = Number(locationId);
+  if (!Number.isFinite(id)) return [];
+  const url = new URL(`${TRIPADVISOR_API}/${id}/reviews`);
+  url.searchParams.set("key", key);
+  url.searchParams.set("language", "en");
+  url.searchParams.set("limit", "5");
+  const res = await fetch(url.toString(), { headers: TA_FETCH_HEADERS }).catch(() => null);
+  if (!res?.ok) return [];
+  const body = await res.json().catch(() => null);
+  const rows = Array.isArray(body?.data) ? body.data : [];
+  return rows.map(mapTripadvisorReview).filter(Boolean).slice(0, 5);
 };
 
 const fetchTripadvisorLocationDetails = async (locationId, key) => {
@@ -731,6 +815,42 @@ const fetchTripadvisorLocationDetails = async (locationId, key) => {
   }).catch(() => null);
   if (!res?.ok) return null;
   return res.json().catch(() => null);
+};
+
+/**
+ * POI categories that typically have useful Tripadvisor listings (reviews, photos, hours).
+ * Everything else — parking, fuel, transit stops, services, administrative boundaries —
+ * is a near-guaranteed miss so we skip the API call entirely and let OSM data fill the panel.
+ */
+const TA_ELIGIBLE_POI = new Set([
+  "food",
+  "drink",
+  "lodging",
+  "sight",
+  "tourism",
+  "culture",
+  "leisure",
+  "sport",
+  "park",
+  "shop",
+  "shop_large",
+  "fashion",
+  "tech",
+  "beauty",
+  "historic",
+  "nature",
+]);
+
+/** OSM keys we consider "tourist-worthy" when `poi` is missing or stale. */
+const TA_ELIGIBLE_OSM_KEYS = new Set(["tourism", "leisure", "historic"]);
+
+const shouldTryTripadvisor = (place) => {
+  const poi = String(place?.poi || "").trim();
+  if (poi && TA_ELIGIBLE_POI.has(poi)) return true;
+  if (poi && poi !== "place") return false;
+  /** Unknown `poi`: allow if OSM key hints at something touristy, else skip. */
+  const osmKey = String(place?.osmKey || "").trim().toLowerCase();
+  return TA_ELIGIBLE_OSM_KEYS.has(osmKey);
 };
 
 const pickBestTripadvisorNearby = (rows, placeName) => {
@@ -783,7 +903,22 @@ const fetchTripadvisorMatchUncached = async (place, tripadvisorApiKey) => {
   );
   if (details == null) return { review: null, cacheable: false };
   const review = tripadvisorDetailsToReview(details, best.name || place.name);
-  return { review, cacheable: true };
+  if (!review) return { review: null, cacheable: true };
+
+  /** Photos and reviews are best-effort; the rating panel renders even if either call fails. */
+  const [photos, reviewList] = await Promise.all([
+    fetchTripadvisorPhotos(best.location_id, tripadvisorApiKey).catch(() => []),
+    fetchTripadvisorReviews(best.location_id, tripadvisorApiKey).catch(() => []),
+  ]);
+
+  return {
+    review: {
+      ...review,
+      taPhotos: photos,
+      taReviews: reviewList,
+    },
+    cacheable: true,
+  };
 };
 
 const fetchTripadvisorMatch = async (place, context) => {
@@ -885,16 +1020,64 @@ const fullMapTab = {
 
     const tripadvisorApiKey = await resolveTripadvisorApiKey(context);
     if (tripadvisorApiKey) {
-      const taSlice = pagePlaces.slice(0, 8);
-      const taRows = await Promise.all(
-        taSlice.map((p) => withTimeout(fetchTripadvisorMatch(p, context), 4500)),
-      );
+      /**
+       * Cost-control policy:
+       *  1. Serve every place that already has a cached TA entry (0 API calls).
+       *  2. For cache misses, only call TA for top `FRESH_TA_BUDGET` places that pass the
+       *     POI allowlist (skips parking/fuel/transit/admin/etc.).
+       *  3. The rest fall through to OSM-only (address/phone/website/stars/fhrs).
+       */
+      const FRESH_TA_BUDGET = 4;
+      await ensureEnrichmentCacheLoaded();
+
+      let cacheHits = 0;
+      let cacheMisses = 0;
+      let skippedByCategory = 0;
+      let scheduledFresh = 0;
+
       const taById = new Map();
-      for (let i = 0; i < taSlice.length; i++) {
-        const patch = taRows[i];
-        if (patch) taById.set(taSlice[i].id, patch);
+      const freshQueue = [];
+
+      for (const p of pagePlaces) {
+        const cached = reviewCacheGet("tripadvisor", p.id);
+        if (cached !== undefined) {
+          cacheHits += 1;
+          if (cached) taById.set(p.id, cached);
+          continue;
+        }
+        if (!shouldTryTripadvisor(p)) {
+          skippedByCategory += 1;
+          continue;
+        }
+        if (freshQueue.length < FRESH_TA_BUDGET) {
+          freshQueue.push(p);
+          scheduledFresh += 1;
+        } else {
+          cacheMisses += 1;
+        }
       }
+
+      if (freshQueue.length > 0) {
+        const taRows = await Promise.all(
+          freshQueue.map((p) => withTimeout(fetchTripadvisorMatch(p, context), 4500)),
+        );
+        for (let i = 0; i < freshQueue.length; i++) {
+          const patch = taRows[i];
+          if (patch) taById.set(freshQueue[i].id, patch);
+        }
+      }
+
       pagePlaces = pagePlaces.map((p) => (taById.has(p.id) ? { ...p, ...taById.get(p.id) } : p));
+
+      try {
+        console.log(
+          `[full-map] Tripadvisor: ${cacheHits} cache-hit, ${scheduledFresh} fresh, ` +
+            `${skippedByCategory} skipped (OSM-only), ${cacheMisses} deferred ` +
+            `(page=${pagePlaces.length}, budget=${FRESH_TA_BUDGET})`,
+        );
+      } catch {
+        /* ignore */
+      }
     }
 
     const enriched = await Promise.all(

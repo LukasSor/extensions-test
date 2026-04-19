@@ -384,6 +384,34 @@
         osmStarsMax: finiteOr(payload.osmStarsMax, 5) ?? 5,
         osmFoodHygiene: finiteOr(payload.osmFoodHygiene, null),
         osmFoodHygieneMax: finiteOr(payload.osmFoodHygieneMax, 5) ?? 5,
+        taDescription: String(payload.taDescription || ""),
+        taPhone: String(payload.taPhone || ""),
+        taWebsite: String(payload.taWebsite || ""),
+        taAddress: String(payload.taAddress || ""),
+        taCategory: String(payload.taCategory || ""),
+        taRankingString: String(payload.taRankingString || ""),
+        taPriceLevel: String(payload.taPriceLevel || ""),
+        taWeekdayHours: Array.isArray(payload.taWeekdayHours) ? payload.taWeekdayHours.slice(0, 7) : [],
+        taPhotos: Array.isArray(payload.taPhotos)
+          ? payload.taPhotos
+              .filter((p) => p && typeof p.src === "string")
+              .map((p) => ({ src: String(p.src), caption: String(p.caption || "") }))
+              .slice(0, 6)
+          : [],
+        taReviews: Array.isArray(payload.taReviews)
+          ? payload.taReviews
+              .filter((r) => r && (r.title || r.text))
+              .map((r) => ({
+                title: String(r.title || ""),
+                text: String(r.text || ""),
+                rating: finiteOr(r.rating, null),
+                ratingImageUrl: String(r.ratingImageUrl || ""),
+                date: String(r.date || ""),
+                user: String(r.user || ""),
+                url: String(r.url || ""),
+              }))
+              .slice(0, 5)
+          : [],
       });
     }
     return places;
@@ -422,38 +450,182 @@
     return leafletPromise;
   };
 
-  const formatRatingBlock = (place) => {
-    const extRating = finiteOr(place.reviewRating, null);
-    const extMax = finiteOr(place.reviewMax, 5) || 5;
-    const extCount = finiteOr(place.reviewCount, null);
-    const src = String(place.reviewSource || "");
+  /** Render `n` solid + `m` empty bubble dots using SVG (deterministic, theme-safe). */
+  const renderBubbleDots = (rating, max = 5) => {
+    const r = Math.max(0, Math.min(Number(max) || 5, Number(rating) || 0));
+    const full = Math.floor(r);
+    const half = r - full >= 0.5 ? 1 : 0;
+    const empty = Math.max(0, Math.floor(Number(max) || 5) - full - half);
+    const dot = (kind) => {
+      if (kind === "full") {
+        return '<span class="fm-dot fm-dot--full" aria-hidden="true"></span>';
+      }
+      if (kind === "half") {
+        return '<span class="fm-dot fm-dot--half" aria-hidden="true"></span>';
+      }
+      return '<span class="fm-dot fm-dot--empty" aria-hidden="true"></span>';
+    };
+    return (
+      `<span class="fm-dots" role="img" aria-label="${esc(r.toFixed(1) + " of " + max)}">` +
+      dot("full").repeat(full) +
+      (half ? dot("half") : "") +
+      dot("empty").repeat(empty) +
+      "</span>"
+    );
+  };
 
-    if (extRating != null && src === "tripadvisor") {
-      const fill = Math.min(100, Math.max(0, (extRating / extMax) * 100));
-      const countBit =
-        extCount != null && extCount > 0
-          ? `<span class="fm-rating-note"> · ${esc(String(extCount.toLocaleString()))} reviews</span>`
-          : "";
-      const bubbleImg = place.reviewImageUrl
-        ? `<img class="fm-ta-bubble-rating" src="${esc(proxiedImageSrc(place.reviewImageUrl))}" width="120" height="22" alt="${esc(`${extRating.toFixed(1)} of ${extMax}`)}" loading="lazy">`
-        : "";
-      const link = place.reviewUrl
-        ? `<p class="fm-review-actions"><a class="fm-review-link" href="${esc(place.reviewUrl)}" target="_blank" rel="noopener">Open on Tripadvisor</a></p>`
-        : "";
-      const starFallback = bubbleImg
-        ? ""
-        : `<div class="fm-star-track" aria-hidden="true"><div class="fm-star-fill" style="width:${fill}%"></div></div>`;
-      return `<div class="fm-rating fm-rating--tripadvisor">
-          <div class="fm-rating-head">
-            <span class="fm-rating-score">${esc(extRating.toFixed(1))}</span><span class="fm-rating-out">/${esc(String(extMax))}</span>${countBit}
-          </div>
-          ${bubbleImg}
-          ${starFallback}
-          ${link}
-          <p class="fm-ta-legal">Tripadvisor traveler ratings — nearby listing match; follow <a href="https://tripadvisor-content-api.readme.io/reference/display-requirements" target="_blank" rel="noopener">display requirements</a> for production.</p>
-        </div>`;
+  const formatReviewDate = (raw) => {
+    const s = String(raw || "").trim();
+    if (!s) return "";
+    const d = new Date(s);
+    if (Number.isNaN(d.getTime())) return s;
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+  };
+
+  const renderTripadvisorHeader = (place) => {
+    const rating = finiteOr(place.reviewRating, null);
+    if (rating == null || place.reviewSource !== "tripadvisor") return "";
+    const count = finiteOr(place.reviewCount, null);
+    const countStr = count != null && count > 0 ? ` (${count.toLocaleString()})` : "";
+    const inner =
+      `<i class="fa-solid fa-star fm-ta-star" aria-hidden="true"></i>` +
+      `<span class="fm-ta-label">Tripadvisor${esc(countStr)}</span>` +
+      renderBubbleDots(rating, place.reviewMax || 5);
+    if (place.reviewUrl) {
+      return `<a class="fm-ta-header" href="${esc(place.reviewUrl)}" target="_blank" rel="noopener">${inner}</a>`;
     }
+    return `<div class="fm-ta-header">${inner}</div>`;
+  };
 
+  const renderHoursBlock = (place) => {
+    const rows = Array.isArray(place.taWeekdayHours) ? place.taWeekdayHours : [];
+    const osmHours = String(place.openingHours || "").trim();
+    if (rows.length === 0 && !osmHours) return "";
+    const todayIdx = (new Date().getDay() + 6) % 7; // 0 = Monday-ish for weekday_text
+    const todayRow = rows[todayIdx] || rows[0] || osmHours;
+    if (rows.length === 0) {
+      return `<div class="fm-row fm-row-hours"><i class="fa-regular fa-clock fm-row-ico" aria-hidden="true"></i><div class="fm-row-body"><div class="fm-row-line">${esc(osmHours)}</div></div></div>`;
+    }
+    const list = rows
+      .map((line, i) => {
+        const parts = String(line).split(/:\s*/);
+        const day = parts.shift() || "";
+        const rest = parts.join(": ");
+        return `<li class="${i === todayIdx ? "is-today" : ""}"><span class="fm-hours-day">${esc(day)}</span><span class="fm-hours-time">${esc(rest)}</span></li>`;
+      })
+      .join("");
+    return `
+      <details class="fm-row fm-row-hours fm-hours-wrap">
+        <summary>
+          <i class="fa-regular fa-clock fm-row-ico" aria-hidden="true"></i>
+          <div class="fm-row-body">
+            <div class="fm-row-line"><span class="fm-hours-label">Opening hours</span> <span class="fm-row-sub">${esc(String(todayRow).replace(/^[A-Za-z]+:\s*/, ""))}</span></div>
+          </div>
+          <i class="fa-solid fa-chevron-down fm-row-chev" aria-hidden="true"></i>
+        </summary>
+        <ul class="fm-hours-list">${list}</ul>
+      </details>
+    `;
+  };
+
+  const renderGallery = (place) => {
+    const photos = Array.isArray(place.taPhotos) ? place.taPhotos : [];
+    const hero = place.image || photos[0]?.src;
+    if (!hero && photos.length === 0) return "";
+    const heroSrc = hero ? proxiedImageSrc(hero) : "";
+    const tiles = photos
+      .slice(hero && photos[0]?.src === hero ? 1 : 0, 5)
+      .map((p) => {
+        const src = proxiedImageSrc(p.src);
+        const alt = p.caption || "";
+        const href = p.src;
+        return `<a class="fm-gallery-tile" href="${esc(href)}" target="_blank" rel="noopener"><img loading="lazy" src="${esc(src)}" alt="${esc(alt)}"></a>`;
+      })
+      .join("");
+    return `
+      <div class="fm-gallery">
+        ${heroSrc ? `<a class="fm-gallery-hero" href="${esc(hero)}" target="_blank" rel="noopener"><img loading="lazy" src="${esc(heroSrc)}" alt="${esc(place.name)}"></a>` : ""}
+        ${tiles ? `<div class="fm-gallery-tiles">${tiles}</div>` : ""}
+      </div>
+    `;
+  };
+
+  const renderInfoRows = (place) => {
+    const rows = [];
+    const address = place.taAddress || place.address;
+    if (address) {
+      rows.push(
+        `<div class="fm-row"><i class="fa-solid fa-location-dot fm-row-ico" aria-hidden="true"></i><div class="fm-row-body"><div class="fm-row-line">${esc(address)}</div></div></div>`,
+      );
+      const dirUrl = `https://www.openstreetmap.org/directions?to=${encodeURIComponent(place.lat + "," + place.lon)}`;
+      rows.push(
+        `<a class="fm-row fm-row-link" href="${esc(dirUrl)}" target="_blank" rel="noopener"><i class="fa-solid fa-diamond-turn-right fm-row-ico" aria-hidden="true"></i><div class="fm-row-body"><div class="fm-row-line">Directions</div></div></a>`,
+      );
+    }
+    const website = place.taWebsite || place.website;
+    if (website) {
+      const display = website.replace(/^https?:\/\//i, "").replace(/\/$/, "");
+      rows.push(
+        `<a class="fm-row fm-row-link" href="${esc(website)}" target="_blank" rel="noopener"><i class="fa-solid fa-globe fm-row-ico" aria-hidden="true"></i><div class="fm-row-body"><div class="fm-row-line">${esc(display)}</div></div></a>`,
+      );
+    }
+    const phone = place.taPhone || place.phone;
+    if (phone) {
+      const tel = phone.replace(/[^0-9+]/g, "");
+      rows.push(
+        `<a class="fm-row fm-row-link" href="tel:${esc(tel)}"><i class="fa-solid fa-phone fm-row-ico" aria-hidden="true"></i><div class="fm-row-body"><div class="fm-row-line">${esc(phone)}</div></div></a>`,
+      );
+    }
+    return rows.join("");
+  };
+
+  const renderDescription = (place) => {
+    const text = place.taDescription || place.wikiSummary;
+    if (!text) return "";
+    return `
+      <section class="fm-section">
+        <h4 class="fm-section-title">Description</h4>
+        <p class="fm-section-body">${esc(text)}</p>
+      </section>
+    `;
+  };
+
+  const renderReviews = (place) => {
+    const reviews = Array.isArray(place.taReviews) ? place.taReviews : [];
+    if (reviews.length === 0) return "";
+    const items = reviews
+      .map((r) => {
+        const bubbles = r.rating != null ? renderBubbleDots(r.rating, 5) : "";
+        const score = r.rating != null ? Number(r.rating).toFixed(1) : "";
+        const date = formatReviewDate(r.date);
+        const head = [bubbles, score ? `<span class="fm-review-score">${esc(score)}</span>` : "", date ? `<span class="fm-review-date">${esc(date)}</span>` : ""]
+          .filter(Boolean)
+          .join(" <span class=\"fm-review-sep\">·</span> ");
+        const body = r.text
+          ? `<p class="fm-review-body">${esc(r.text)}${r.url ? ` <a class="fm-review-more" href="${esc(r.url)}" target="_blank" rel="noopener">Read more</a>` : ""}</p>`
+          : "";
+        return `
+          <article class="fm-review">
+            ${r.title ? `<h5 class="fm-review-title">${esc(r.title)}</h5>` : ""}
+            <div class="fm-review-meta">${head}</div>
+            ${body}
+          </article>`;
+      })
+      .join("");
+    const footer = place.reviewUrl
+      ? `<p class="fm-reviews-footer">View more reviews on <a href="${esc(place.reviewUrl)}" target="_blank" rel="noopener">Tripadvisor</a></p>`
+      : "";
+    return `
+      <section class="fm-section">
+        <h4 class="fm-section-title">Reviews</h4>
+        <div class="fm-reviews-list">${items}</div>
+        ${footer}
+      </section>
+    `;
+  };
+
+  /** Fallback when Tripadvisor is absent: OSM stars or UK FHRS, keeps older behavior. */
+  const renderOsmRating = (place) => {
     const osmStars = finiteOr(place.osmStars, null);
     const osmStarsMax = finiteOr(place.osmStarsMax, 5) || 5;
     if (osmStars != null) {
@@ -464,7 +636,6 @@
           <div class="fm-star-track" aria-hidden="true"><div class="fm-star-fill" style="width:${fill}%"></div></div>
         </div>`;
     }
-
     const fhrs = finiteOr(place.osmFoodHygiene, null);
     const fhrsMax = finiteOr(place.osmFoodHygieneMax, 5) || 5;
     if (fhrs != null) {
@@ -475,54 +646,41 @@
           <div class="fm-star-track fm-star-track--fhrs" aria-hidden="true"><div class="fm-star-fill fm-star-fill--fhrs" style="width:${fill}%"></div></div>
         </div>`;
     }
-
     return "";
   };
 
   const buildInfoHtml = (place) => {
-    const image = place.image
-      ? `<img class="fm-info-image" src="${esc(proxiedImageSrc(place.image))}" alt="" loading="lazy">`
-      : "";
-    const summary = place.wikiSummary
-      ? `<p class="fm-info-summary">${esc(place.wikiSummary)}</p>`
-      : `<p class="fm-info-summary">No rich description available for this place yet.</p>`;
-    const osmTag =
-      place.osmKey && place.osmValue
-        ? `<li><strong>OSM tag:</strong> <code>${esc(place.osmKey)}</code>=<code>${esc(place.osmValue)}</code></li>`
+    const taHeader = renderTripadvisorHeader(place);
+    const hoursBlock = renderHoursBlock(place);
+    const gallery = renderGallery(place);
+    const infoRows = renderInfoRows(place);
+    const description = renderDescription(place);
+    const reviewsSection = renderReviews(place);
+
+    const osmFallback =
+      !taHeader && place.reviewSource !== "tripadvisor" ? renderOsmRating(place) : "";
+
+    const missingKeyHint =
+      !taHeader && !place.taReviews?.length && !place.taPhotos?.length
+        ? `<p class="fm-ta-empty">No Tripadvisor data for this place. Add a <strong>Tripadvisor Content</strong> API key under <strong>Settings → Engines → Maps → Full Map (Tripadvisor)</strong>.</p>`
         : "";
-    const details = [
-      place.address ? `<li><strong>Address:</strong> ${esc(place.address)}</li>` : "",
-      place.city ? `<li><strong>City:</strong> ${esc(place.city)}</li>` : "",
-      place.country ? `<li><strong>Country:</strong> ${esc(place.country)}</li>` : "",
-      place.kind ? `<li><strong>Category:</strong> ${esc(place.kind)}</li>` : "",
-      osmTag,
-      place.phone ? `<li><strong>Phone:</strong> ${esc(place.phone)}</li>` : "",
-      place.openingHours ? `<li><strong>Opening:</strong> ${esc(place.openingHours)}</li>` : "",
-      place.website
-        ? `<li><strong>Website:</strong> <a href="${esc(place.website)}" target="_blank" rel="noopener">${esc(place.website)}</a></li>`
-        : "",
-    ]
-      .filter(Boolean)
-      .join("");
 
-    const ratingInner = formatRatingBlock(place);
-    const ratingsSection = ratingInner
-      ? `<div class="fm-reviews"><h4>Ratings</h4>${ratingInner}</div>`
-      : `<div class="fm-reviews"><h4>Ratings</h4><p class="fm-reviews-none">No star data yet. Add a <strong>Tripadvisor Content</strong> API key under <strong>Settings → Engines → Maps → Full Map (Tripadvisor)</strong>, or use OSM tags such as <code>stars</code> / UK <code>fhrs:rating</code> when present.</p></div>`;
-
-    const wikiBackground = place.wikiTitle
-      ? `<div class="fm-background"><h4>Background</h4><p>Wikipedia article: ${esc(place.wikiTitle)}</p></div>`
-      : "";
+    const osmLink = `<a class="fm-open-link" href="${esc(place.sourceUrl)}" target="_blank" rel="noopener">Open in OpenStreetMap</a>`;
 
     return `
-      ${image}
-      <div class="fm-info-body">
-        <h3>${esc(place.name)}</h3>
-        ${summary}
-        ${ratingsSection}
-        <ul class="fm-info-meta">${details}</ul>
-        ${wikiBackground}
-        <a class="fm-open-link" href="${esc(place.sourceUrl)}" target="_blank" rel="noopener">Open in OpenStreetMap</a>
+      <div class="fm-detail">
+        <header class="fm-detail-head">
+          <h3 class="fm-detail-title">${esc(place.name)}</h3>
+          ${taHeader}
+        </header>
+        ${hoursBlock}
+        ${gallery}
+        <div class="fm-rows">${infoRows}</div>
+        ${description}
+        ${osmFallback}
+        ${reviewsSection}
+        ${missingKeyHint}
+        <div class="fm-detail-footer">${osmLink}</div>
       </div>
     `;
   };
