@@ -396,8 +396,24 @@ const wikiCacheSet = (wk, preview) => {
   cacheDirty = true;
 };
 
-/** Tripadvisor Content API key (optional); https://www.tripadvisor.com/developers */
-let tripadvisorApiKey = "";
+/** Same id the server assigns to engines/full-map-tripadvisor (folder name). */
+const FULL_MAP_TA_ENGINE_ID = "engine-full-map-tripadvisor";
+
+const pluginSettingsPath = () =>
+  process.env.DEGOOG_PLUGIN_SETTINGS_FILE ??
+  join(process.env.DEGOOG_DATA_DIR ?? join(process.cwd(), "data"), "plugin-settings.json");
+
+/** Tripadvisor key from Settings → Engines → Full Map (Tripadvisor) → Configure. */
+const readTripadvisorKeyFromEngineSettings = async () => {
+  try {
+    const raw = await readFile(pluginSettingsPath(), "utf-8");
+    const all = JSON.parse(raw);
+    const v = all[FULL_MAP_TA_ENGINE_ID]?.tripadvisorApiKey;
+    return typeof v === "string" ? safeTrim(v) : "";
+  } catch {
+    return "";
+  }
+};
 
 const TRIPADVISOR_API = "https://api.content.tripadvisor.com/api/v1/location";
 
@@ -598,7 +614,7 @@ const pickBestTripadvisorNearby = (rows, placeName) => {
  * @returns {Promise<{ review: object | null, cacheable: boolean }>}
  * `cacheable: false` on transport/HTTP failures so we do not burn a negative-cache slot.
  */
-const fetchTripadvisorMatchUncached = async (place) => {
+const fetchTripadvisorMatchUncached = async (place, tripadvisorApiKey) => {
   if (!tripadvisorApiKey) return { review: null, cacheable: false };
   const url = new URL(`${TRIPADVISOR_API}/nearby_search`);
   url.searchParams.set("latLong", `${place.lat},${place.lon}`);
@@ -614,18 +630,22 @@ const fetchTripadvisorMatchUncached = async (place) => {
   const rows = Array.isArray(json?.data) ? json.data : [];
   const best = pickBestTripadvisorNearby(rows, place.name);
   if (!best) return { review: null, cacheable: true };
-  const details = await fetchTripadvisorLocationDetails(best.location_id, tripadvisorApiKey);
+  const details = await fetchTripadvisorLocationDetails(
+    best.location_id,
+    tripadvisorApiKey,
+  );
   if (details == null) return { review: null, cacheable: false };
   const review = tripadvisorDetailsToReview(details, best.name || place.name);
   return { review, cacheable: true };
 };
 
 const fetchTripadvisorMatch = async (place) => {
+  const tripadvisorApiKey = await readTripadvisorKeyFromEngineSettings();
   if (!tripadvisorApiKey) return null;
   await ensureEnrichmentCacheLoaded();
   const hit = reviewCacheGet("tripadvisor", place.id);
   if (hit !== undefined) return hit;
-  const { review, cacheable } = await fetchTripadvisorMatchUncached(place);
+  const { review, cacheable } = await fetchTripadvisorMatchUncached(place, tripadvisorApiKey);
   if (cacheable) reviewCacheSet("tripadvisor", place.id, review);
   return review;
 };
@@ -637,29 +657,12 @@ const serializePlace = (place) => {
   return `${MAP_PAYLOAD_PREFIX}${token}${MAP_PAYLOAD_SUFFIX}`;
 };
 
-/** Tripadvisor key; shown under Settings → Engines (same UI as search engines). */
-const FULL_MAP_SETTINGS_SCHEMA = [
-  {
-    key: "tripadvisorApiKey",
-    label: "Tripadvisor Content API key",
-    type: "password",
-    secret: true,
-    placeholder: "Optional — ratings & review counts (5000 free calls/mo tier)",
-    description:
-      "Register at https://www.tripadvisor.com/developers — Content API key. Up to the first 8 results per page: 2 calls each (nearby + details) when not cached, so traveler ratings align with Tripadvisor review counts. Results are cached on disk (~30 days). Follow Tripadvisor display rules in the map panel.",
-  },
-];
-
 const fullMapTab = {
   id: "full-map",
   name: "Full Map",
   description:
-    "Map tab for place search (Photon / OSM), optional Tripadvisor ratings and Wikipedia context. Tripadvisor key: Settings → Engines → Full Map → Configure.",
+    "Map tab for place search (Photon / OSM), optional Tripadvisor ratings and Wikipedia context. Tripadvisor key: Settings → Engines → Full Map (Tripadvisor) → Configure.",
   icon: "map",
-  settingsSchema: FULL_MAP_SETTINGS_SCHEMA,
-  configure(settings) {
-    tripadvisorApiKey = safeTrim(settings?.tripadvisorApiKey);
-  },
 
   async executeSearch(query, page = 1) {
     const q = safeTrim(query);
@@ -731,6 +734,7 @@ const fullMapTab = {
       return mergeExtratagsIntoPlace(p, ext);
     });
 
+    const tripadvisorApiKey = await readTripadvisorKeyFromEngineSettings();
     if (tripadvisorApiKey) {
       const taSlice = pagePlaces.slice(0, 8);
       const taRows = await Promise.all(
