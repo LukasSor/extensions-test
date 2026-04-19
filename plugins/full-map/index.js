@@ -411,8 +411,11 @@ const asPluginStoredString = (v) => {
   return "";
 };
 
-/** Tripadvisor key from Settings → Engines → Maps → Full Map (Tripadvisor) → Configure. */
-const readTripadvisorKeyFromEngineSettings = async () => {
+/**
+ * Reads engine key from the same `plugin-settings.json` as Settings → Engines (fallback when
+ * `context.tripadvisorApiKey` is missing). No `.env` / process Tripadvisor vars — only UI + this file.
+ */
+const readTripadvisorKeyFromSettingsFile = async () => {
   try {
     const raw = await readFile(pluginSettingsPath(), "utf-8");
     const all = JSON.parse(raw);
@@ -422,6 +425,13 @@ const readTripadvisorKeyFromEngineSettings = async () => {
   } catch {
     return "";
   }
+};
+
+/** @param {Record<string, unknown>|undefined} context */
+const resolveTripadvisorApiKey = async (context) => {
+  const fromRequest = asPluginStoredString(context?.tripadvisorApiKey);
+  if (fromRequest) return fromRequest;
+  return readTripadvisorKeyFromSettingsFile();
 };
 
 const TRIPADVISOR_API = "https://api.content.tripadvisor.com/api/v1/location";
@@ -718,8 +728,8 @@ const fetchTripadvisorMatchUncached = async (place, tripadvisorApiKey) => {
   return { review, cacheable: true };
 };
 
-const fetchTripadvisorMatch = async (place) => {
-  const tripadvisorApiKey = await readTripadvisorKeyFromEngineSettings();
+const fetchTripadvisorMatch = async (place, context) => {
+  const tripadvisorApiKey = await resolveTripadvisorApiKey(context);
   if (!tripadvisorApiKey) return null;
   await ensureEnrichmentCacheLoaded();
   const hit = reviewCacheGet("tripadvisor", place.id);
@@ -745,7 +755,7 @@ const fullMapTab = {
     "Map tab for place search (Photon / OSM), optional Tripadvisor ratings and Wikipedia context. Tripadvisor key: Settings → Engines → Maps → Full Map (Tripadvisor) → Configure.",
   icon: "map",
 
-  async executeSearch(query, page = 1) {
+  async executeSearch(query, page = 1, context) {
     const q = safeTrim(query);
     if (!q) return { results: [], totalPages: 1 };
 
@@ -815,11 +825,11 @@ const fullMapTab = {
       return mergeExtratagsIntoPlace(p, ext);
     });
 
-    const tripadvisorApiKey = await readTripadvisorKeyFromEngineSettings();
+    const tripadvisorApiKey = await resolveTripadvisorApiKey(context);
     if (tripadvisorApiKey) {
       const taSlice = pagePlaces.slice(0, 8);
       const taRows = await Promise.all(
-        taSlice.map((p) => withTimeout(fetchTripadvisorMatch(p), 4500)),
+        taSlice.map((p) => withTimeout(fetchTripadvisorMatch(p, context), 4500)),
       );
       const taById = new Map();
       for (let i = 0; i < taSlice.length; i++) {
