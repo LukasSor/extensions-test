@@ -314,6 +314,11 @@
     return "place";
   };
 
+  const finiteOr = (n, fallback = null) => {
+    const x = Number(n);
+    return Number.isFinite(x) ? x : fallback;
+  };
+
   const parsePayloadFromSnippet = (snippet) => {
     const text = (snippet || "").trim();
     const m = text.match(/^\[fullmap:\s*([A-Za-z0-9_-]+=*)\s*\]/i);
@@ -357,6 +362,16 @@
         wikiTitle: String(payload.wikiTitle || ""),
         wikiSummary: String(payload.wikiSummary || ""),
         image: String(payload.image || ""),
+        reviewRating: finiteOr(payload.reviewRating, null),
+        reviewMax: finiteOr(payload.reviewMax, 5) ?? 5,
+        reviewCount: finiteOr(payload.reviewCount, null),
+        reviewUrl: String(payload.reviewUrl || ""),
+        reviewSource: String(payload.reviewSource || ""),
+        reviewName: String(payload.reviewName || ""),
+        osmStars: finiteOr(payload.osmStars, null),
+        osmStarsMax: finiteOr(payload.osmStarsMax, 5) ?? 5,
+        osmFoodHygiene: finiteOr(payload.osmFoodHygiene, null),
+        osmFoodHygieneMax: finiteOr(payload.osmFoodHygieneMax, 5) ?? 5,
       });
     }
     return places;
@@ -395,6 +410,56 @@
     return leafletPromise;
   };
 
+  const formatRatingBlock = (place) => {
+    const extRating = finiteOr(place.reviewRating, null);
+    const extMax = finiteOr(place.reviewMax, 5) || 5;
+    const extCount = finiteOr(place.reviewCount, null);
+    const src = String(place.reviewSource || "");
+
+    if (extRating != null && src === "tripadvisor") {
+      const fill = Math.min(100, Math.max(0, (extRating / extMax) * 100));
+      const countBit =
+        extCount != null && extCount > 0
+          ? `<span class="fm-rating-note"> · ${esc(String(extCount.toLocaleString()))} reviews</span>`
+          : "";
+      const link = place.reviewUrl
+        ? `<p class="fm-review-actions"><a class="fm-review-link" href="${esc(place.reviewUrl)}" target="_blank" rel="noopener">Open on Tripadvisor</a></p>`
+        : "";
+      return `<div class="fm-rating fm-rating--tripadvisor">
+          <div class="fm-rating-head">
+            <span class="fm-rating-score">${esc(extRating.toFixed(1))}</span><span class="fm-rating-out">/${esc(String(extMax))}</span>${countBit}
+          </div>
+          <div class="fm-star-track" aria-hidden="true"><div class="fm-star-fill" style="width:${fill}%"></div></div>
+          ${link}
+          <p class="fm-ta-legal">Tripadvisor traveler ratings — nearby listing match; follow <a href="https://tripadvisor-content-api.readme.io/reference/display-requirements" target="_blank" rel="noopener">display requirements</a> for production.</p>
+        </div>`;
+    }
+
+    const osmStars = finiteOr(place.osmStars, null);
+    const osmStarsMax = finiteOr(place.osmStarsMax, 5) || 5;
+    if (osmStars != null) {
+      const fill = Math.min(100, Math.max(0, (osmStars / osmStarsMax) * 100));
+      return `<div class="fm-rating fm-rating--osm">
+          <div class="fm-rating-head">Lodging class (from OpenStreetMap <code>stars</code>)</div>
+          <div class="fm-rating-head"><span class="fm-rating-score">${esc(String(osmStars))}</span><span class="fm-rating-out">/${esc(String(osmStarsMax))}</span> stars</div>
+          <div class="fm-star-track" aria-hidden="true"><div class="fm-star-fill" style="width:${fill}%"></div></div>
+        </div>`;
+    }
+
+    const fhrs = finiteOr(place.osmFoodHygiene, null);
+    const fhrsMax = finiteOr(place.osmFoodHygieneMax, 5) || 5;
+    if (fhrs != null) {
+      const fill = Math.min(100, Math.max(0, (fhrs / fhrsMax) * 100));
+      return `<div class="fm-rating fm-rating--osm">
+          <div class="fm-rating-head">Food hygiene (from OSM <code>fhrs:rating</code>, UK)</div>
+          <div class="fm-rating-head"><span class="fm-rating-score">${esc(String(fhrs))}</span><span class="fm-rating-out">/${esc(String(fhrsMax))}</span></div>
+          <div class="fm-star-track fm-star-track--fhrs" aria-hidden="true"><div class="fm-star-fill fm-star-fill--fhrs" style="width:${fill}%"></div></div>
+        </div>`;
+    }
+
+    return "";
+  };
+
   const buildInfoHtml = (place) => {
     const image = place.image
       ? `<img class="fm-info-image" src="${esc(place.image)}" alt="" loading="lazy">`
@@ -421,17 +486,23 @@
       .filter(Boolean)
       .join("");
 
-    const pseudoReviews = place.wikiTitle
-      ? `<div class="fm-reviews"><h4>Background</h4><p>Source article: ${esc(place.wikiTitle)}</p></div>`
-      : `<div class="fm-reviews"><h4>Reviews</h4><p>No public review feed is connected yet.</p></div>`;
+    const ratingInner = formatRatingBlock(place);
+    const ratingsSection = ratingInner
+      ? `<div class="fm-reviews"><h4>Ratings</h4>${ratingInner}</div>`
+      : `<div class="fm-reviews"><h4>Ratings</h4><p class="fm-reviews-none">No star data yet. Add a <strong>Tripadvisor Content</strong> API key under Settings → Plugins → Full Map, or use OSM tags such as <code>stars</code> / UK <code>fhrs:rating</code> when present.</p></div>`;
+
+    const wikiBackground = place.wikiTitle
+      ? `<div class="fm-background"><h4>Background</h4><p>Wikipedia article: ${esc(place.wikiTitle)}</p></div>`
+      : "";
 
     return `
       ${image}
       <div class="fm-info-body">
         <h3>${esc(place.name)}</h3>
         ${summary}
+        ${ratingsSection}
         <ul class="fm-info-meta">${details}</ul>
-        ${pseudoReviews}
+        ${wikiBackground}
         <a class="fm-open-link" href="${esc(place.sourceUrl)}" target="_blank" rel="noopener">Open in OpenStreetMap</a>
       </div>
     `;

@@ -313,6 +313,99 @@ html[data-theme="light"] .full-map-root {
   font-size: 0.8rem;
 }
 
+.fm-reviews-none {
+  margin: 0.35rem 0 0;
+  color: var(--fm-muted);
+  line-height: 1.45;
+}
+
+.fm-background {
+  margin-top: 0.55rem;
+  padding-top: 0.45rem;
+  border-top: 1px dashed var(--fm-panel-border);
+  font-size: 0.8rem;
+}
+
+.fm-background h4 {
+  margin: 0 0 0.25rem;
+  font-size: 0.82rem;
+}
+
+.fm-rating {
+  margin-top: 0.35rem;
+}
+
+.fm-rating-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.35rem;
+  font-size: 0.84rem;
+  margin-bottom: 0.35rem;
+}
+
+.fm-rating-score {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.fm-rating-out {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--fm-muted);
+}
+
+.fm-rating-note {
+  font-size: 0.8rem;
+  color: var(--fm-muted);
+}
+
+.fm-star-track {
+  height: 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fm-muted) 28%, transparent);
+  overflow: hidden;
+  max-width: 12rem;
+  margin-bottom: 0.35rem;
+}
+
+.fm-star-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+
+.fm-star-track--fhrs .fm-star-fill--fhrs {
+  background: linear-gradient(90deg, #16a34a, #4ade80);
+}
+
+.fm-review-actions {
+  margin: 0.25rem 0 0;
+  font-size: 0.82rem;
+}
+
+.fm-review-link {
+  color: var(--link, var(--primary, #1a73e8));
+  font-weight: 600;
+}
+
+.fm-ta-legal {
+  margin: 0.4rem 0 0;
+  font-size: 0.72rem;
+  color: var(--fm-muted);
+  line-height: 1.45;
+}
+
+.fm-ta-legal a {
+  color: var(--link, var(--primary, #1a73e8));
+}
+
+.fm-rating--tripadvisor .fm-star-fill {
+  background: linear-gradient(90deg, #00aa6c, #34d399);
+}
+
 .fm-reviews h4 {
   margin: 0 0 0.25rem;
   font-size: 0.82rem;
