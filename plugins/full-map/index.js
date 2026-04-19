@@ -637,28 +637,48 @@ const serializePlace = (place) => {
   return `${MAP_PAYLOAD_PREFIX}${token}${MAP_PAYLOAD_SUFFIX}`;
 };
 
+/** Same keys as plugin-full-map settings; loaded by the command shim below (Settings → Plugins). */
+const FULL_MAP_SETTINGS_SCHEMA = [
+  {
+    key: "tripadvisorApiKey",
+    label: "Tripadvisor Content API key",
+    type: "password",
+    secret: true,
+    placeholder: "Optional — ratings & review counts (5000 free calls/mo tier)",
+    description:
+      "Register at https://www.tripadvisor.com/developers — Content API key. Up to the first 8 results per page: 2 calls each (nearby + details) when not cached, so traveler ratings align with Tripadvisor review counts. Results are cached on disk (~30 days). Follow Tripadvisor display rules in the map panel.",
+  },
+];
+
+/**
+ * Bang command so this folder appears under Settings → Plugins (search tabs are not listed there).
+ * Shares `plugin-full-map` settings with the tab via `settingsId`.
+ */
+const fullMapSettingsCommand = {
+  name: "Full Map",
+  description:
+    "Tripadvisor API key for the Full Map search tab. Map search runs in the Full Map results tab, not here.",
+  trigger: "fullmap",
+  settingsSchema: FULL_MAP_SETTINGS_SCHEMA,
+  configure(settings) {
+    tripadvisorApiKey = safeTrim(settings?.tripadvisorApiKey);
+  },
+  async execute() {
+    return {
+      title: "Full Map",
+      html: `<div class="command-result"><p>Set your Tripadvisor key under <strong>Settings → Plugins</strong> → <strong>Full Map</strong> → Configure. Open the <strong>Full Map</strong> tab on the results page to search places on the map.</p></div>`,
+    };
+  },
+};
+
 const fullMapTab = {
   id: "full-map",
   name: "Full Map",
   description:
-    "Map tab for place search (Photon / OSM), optional Tripadvisor ratings and Wikipedia context. Configure the API key under Plugins.",
+    "Map tab for place search (Photon / OSM), optional Tripadvisor ratings and Wikipedia context. Configure the Tripadvisor API key under Settings → Plugins → Full Map.",
   icon: "map",
-
-  settingsSchema: [
-    {
-      key: "tripadvisorApiKey",
-      label: "Tripadvisor Content API key",
-      type: "password",
-      secret: true,
-      placeholder: "Optional — ratings & review counts (5000 free calls/mo tier)",
-      description:
-        "Register at https://www.tripadvisor.com/developers — Content API key. Up to the first 8 results per page: 2 calls each (nearby + details) when not cached, so traveler ratings align with Tripadvisor review counts. Results are cached on disk (~30 days). Follow Tripadvisor display rules in the map panel.",
-    },
-  ],
-
-  configure(settings) {
-    tripadvisorApiKey = safeTrim(settings?.tripadvisorApiKey);
-  },
+  /** Same settings record as the command in this folder (`plugin-full-map`). */
+  settingsId: "plugin-full-map",
 
   async executeSearch(query, page = 1) {
     const q = safeTrim(query);
@@ -773,4 +793,4 @@ const fullMapTab = {
 };
 
 export const tab = fullMapTab;
-export default { tab: fullMapTab };
+export default fullMapSettingsCommand;

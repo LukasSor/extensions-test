@@ -146,8 +146,8 @@
       {
         "path": "plugins/full-map",
         "name": "Full Map",
-        "description": "Large OpenStreetMap tab with a place list, interactive markers, and place detail cards with optional Wikipedia media/context.",
-        "version": "1.2.3",
+        "description": "Large OpenStreetMap tab with a place list, interactive markers, and place detail cards with optional Wikipedia media/context. Tripadvisor key: Settings → Plugins → Full Map (same plugin folder).",
+        "version": "1.2.4",
         "type": "search-result-tab"
       }
     ],
