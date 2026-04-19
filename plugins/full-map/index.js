@@ -411,10 +411,7 @@ const asPluginStoredString = (v) => {
   return "";
 };
 
-/**
- * Reads engine key from the same `plugin-settings.json` as Settings → Engines (fallback when
- * `context.tripadvisorApiKey` is missing). No `.env` / process Tripadvisor vars — only UI + this file.
- */
+/** Same `plugin-settings.json` as Settings → Engines writes to. */
 const readTripadvisorKeyFromSettingsFile = async () => {
   try {
     const raw = await readFile(pluginSettingsPath(), "utf-8");
@@ -427,11 +424,72 @@ const readTripadvisorKeyFromSettingsFile = async () => {
   }
 };
 
+/** Emergency fallback: process env / repo `.env` (any of several common var names). */
+const TA_ENV_KEYS = [
+  "TRIPADVISOR_API_KEY",
+  "TRIPADVISOR_CONTENT_API_KEY",
+  "FULL_MAP_TRIPADVISOR_API_KEY",
+  "TA_API_KEY",
+  "TAKEY",
+];
+const readTripadvisorKeyFromEnvOrDotEnv = async () => {
+  let best = "";
+  for (const k of TA_ENV_KEYS) {
+    const v = asPluginStoredString(process.env[k]);
+    if (v.length > best.length) best = v;
+  }
+  const bases = [process.cwd(), join(process.cwd(), ".."), join(process.cwd(), "..", "..")];
+  for (const base of bases) {
+    try {
+      const raw = await readFile(join(base, ".env"), "utf-8");
+      const normalized = raw.replace(/^\uFEFF/, "");
+      for (const line of normalized.split(/\r?\n/)) {
+        const t = line.trim();
+        if (!t || t.startsWith("#")) continue;
+        const eq = t.indexOf("=");
+        if (eq < 0) continue;
+        const name = t.slice(0, eq).trim();
+        if (!TA_ENV_KEYS.includes(name)) continue;
+        const v = asPluginStoredString(t.slice(eq + 1));
+        if (v.length > best.length) best = v;
+      }
+    } catch {
+      /* no .env in this base */
+    }
+  }
+  return best;
+};
+
+let _keySourceLogged = false;
+const _logKeySourceOnce = (source) => {
+  if (_keySourceLogged) return;
+  _keySourceLogged = true;
+  try {
+    console.log(`[full-map] Tripadvisor key source: ${source}`);
+  } catch {
+    /* ignore */
+  }
+};
+
 /** @param {Record<string, unknown>|undefined} context */
 const resolveTripadvisorApiKey = async (context) => {
   const fromRequest = asPluginStoredString(context?.tripadvisorApiKey);
-  if (fromRequest) return fromRequest;
-  return readTripadvisorKeyFromSettingsFile();
+  if (fromRequest) {
+    _logKeySourceOnce("request-context (Settings → Engines)");
+    return fromRequest;
+  }
+  const fromFile = await readTripadvisorKeyFromSettingsFile();
+  if (fromFile) {
+    _logKeySourceOnce("plugin-settings.json");
+    return fromFile;
+  }
+  const fromEnv = await readTripadvisorKeyFromEnvOrDotEnv();
+  if (fromEnv) {
+    _logKeySourceOnce("env/.env fallback");
+    return fromEnv;
+  }
+  _logKeySourceOnce("NOT FOUND — no key available");
+  return "";
 };
 
 const TRIPADVISOR_API = "https://api.content.tripadvisor.com/api/v1/location";
