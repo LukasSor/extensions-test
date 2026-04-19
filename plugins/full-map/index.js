@@ -637,7 +637,7 @@ const serializePlace = (place) => {
   return `${MAP_PAYLOAD_PREFIX}${token}${MAP_PAYLOAD_SUFFIX}`;
 };
 
-/** Same keys as plugin-full-map settings; loaded by the command shim below (Settings → Plugins). */
+/** Tripadvisor key; shown under Settings → Engines (same UI as search engines). */
 const FULL_MAP_SETTINGS_SCHEMA = [
   {
     key: "tripadvisorApiKey",
@@ -654,8 +654,12 @@ const fullMapTab = {
   id: "full-map",
   name: "Full Map",
   description:
-    "Map tab for place search (Photon / OSM), optional Tripadvisor ratings and Wikipedia context. Tripadvisor key: Settings → Plugins → Full Map (plugin-full-map) → Configure.",
+    "Map tab for place search (Photon / OSM), optional Tripadvisor ratings and Wikipedia context. Tripadvisor key: Settings → Engines → Full Map → Configure.",
   icon: "map",
+  settingsSchema: FULL_MAP_SETTINGS_SCHEMA,
+  configure(settings) {
+    tripadvisorApiKey = safeTrim(settings?.tripadvisorApiKey);
+  },
 
   async executeSearch(query, page = 1) {
     const q = safeTrim(query);
@@ -769,25 +773,4 @@ const fullMapTab = {
   },
 };
 
-/**
- * One default export: degoog’s tab loader reads `default.tab` (or named `tab`); the command loader
- * uses `default` as the bang command when it has name/trigger/execute. Keeps a single module surface
- * so both registries accept this file.
- */
-export default {
-  tab: fullMapTab,
-  name: "Full Map",
-  description:
-    "Tripadvisor API key for the Full Map search tab. Map search runs in the Full Map results tab.",
-  trigger: "fullmap",
-  settingsSchema: FULL_MAP_SETTINGS_SCHEMA,
-  configure(settings) {
-    tripadvisorApiKey = safeTrim(settings?.tripadvisorApiKey);
-  },
-  async execute() {
-    return {
-      title: "Full Map",
-      html: `<div class="command-result"><p>Open <strong>Settings → Plugins</strong>, find <strong>Full Map</strong> (plugin id <code>plugin-full-map</code>), click <strong>Configure</strong>, and paste your Tripadvisor Content API key. Then use the <strong>Full Map</strong> tab in search results for the map.</p></div>`,
-    };
-  },
-};
+export default { tab: fullMapTab };
