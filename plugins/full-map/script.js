@@ -401,6 +401,7 @@
         website: String(payload.website || ""),
         phone: String(payload.phone || ""),
         openingHours: String(payload.openingHours || ""),
+        osmDescription: String(payload.osmDescription || ""),
         wikiTitle: wikiOk ? rawWikiTitle : "",
         wikiSummary: wikiOk ? String(payload.wikiSummary || "") : "",
         image: wikiOk ? String(payload.image || "") : "",
@@ -613,11 +614,20 @@
   };
 
   const renderDescription = (place) => {
-    const text = place.taDescription || place.wikiSummary;
+    /** TA > OSM tag > Wikipedia (already gated on title-vs-name relevance
+     *  in parseResults, so stale nearby-article leakage can't land here). */
+    const text = place.taDescription || place.osmDescription || place.wikiSummary;
     if (!text) return "";
+    const source = place.taDescription
+      ? "Tripadvisor"
+      : place.osmDescription
+        ? "OpenStreetMap"
+        : place.wikiTitle
+          ? `Wikipedia · ${place.wikiTitle}`
+          : "";
     return `
       <section class="fm-section">
-        <h4 class="fm-section-title">Description</h4>
+        <h4 class="fm-section-title">Description${source ? ` <span class="fm-section-source">${esc(source)}</span>` : ""}</h4>
         <p class="fm-section-body">${esc(text)}</p>
       </section>
     `;

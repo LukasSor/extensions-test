@@ -692,11 +692,32 @@ const fetchNominatimExtratagsMap = async (places) => {
   return map;
 };
 
+/**
+ * Pick an OSM description tied to this exact place. OSM stores localized
+ * variants (`description:en`, `description:de`, …); prefer English, then
+ * the generic `description`, then any locale. These tags belong to the
+ * place's own OSM feature, so unlike wiki geosearch they can't bleed in
+ * from a nearby landmark.
+ */
+const pickOsmDescription = (ext) => {
+  if (!ext || typeof ext !== "object") return "";
+  const preferred = extratagPick(ext, ["description:en", "description", "note", "note:en"]);
+  if (preferred) return preferred;
+  for (const [k, v] of Object.entries(ext)) {
+    if (typeof k !== "string") continue;
+    if (!k.startsWith("description:")) continue;
+    const s = sanitizeText(v);
+    if (s) return s;
+  }
+  return "";
+};
+
 const mergeExtratagsIntoPlace = (place, ext) => {
   if (!ext) return place;
   const phone = extratagPick(ext, ["phone", "contact:phone", "contact:mobile"]);
   const website = extratagPick(ext, ["contact:website", "website", "url"]);
   const hours = extratagPick(ext, ["opening_hours", "oh"]);
+  const description = pickOsmDescription(ext);
   const stars = parseStarsFromExtratags(ext);
   const fhrs = parseFhrsFromExtratags(ext);
 
@@ -704,6 +725,7 @@ const mergeExtratagsIntoPlace = (place, ext) => {
   if (!next.phone && phone) next.phone = sanitizeText(phone);
   if (!next.website && website) next.website = sanitizeText(website);
   if (!next.openingHours && hours) next.openingHours = sanitizeText(hours);
+  if (description) next.osmDescription = sanitizeText(description).slice(0, 700);
 
   if (stars != null) {
     next.osmStars = stars;

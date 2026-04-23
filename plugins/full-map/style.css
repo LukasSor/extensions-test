@@ -545,6 +545,15 @@ html[data-theme="light"] .full-map-root {
   font-weight: 700;
 }
 
+.fm-section-source {
+  margin-left: 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-secondary, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .fm-section-body {
   margin: 0;
   font-size: 0.88rem;
