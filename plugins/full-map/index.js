@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 const MAP_PAYLOAD_PREFIX = "[fullmap:";
 const MAP_PAYLOAD_SUFFIX = "]";
+let fullMapPreferredLocation = "";
 
 const safeTrim = (value) => (typeof value === "string" ? value.trim() : "");
 
@@ -1173,6 +1174,22 @@ const fullMapTab = {
   name: "Full Map",
   /** Matches plugin engine `type` "maps" so search tabs merge and Tripadvisor settings sit under Engines → Maps. */
   engineType: "maps",
+  settingsSchema: [
+    {
+      key: "preferredLocation",
+      label: "Preferred location (city or address)",
+      type: "text",
+      placeholder: "e.g. Wels, Austria",
+      description:
+        "Optional. Bias Full Map ranking toward places near this location for more personalized local results.",
+    },
+  ],
+  configure(settings) {
+    fullMapPreferredLocation =
+      typeof settings?.preferredLocation === "string"
+        ? settings.preferredLocation.trim()
+        : "";
+  },
   description:
     "Map tab for place search (Photon / OSM), optional Tripadvisor ratings and Wikipedia context. Tripadvisor key: Settings → Engines → Maps → Full Map (Tripadvisor) → Configure.",
   icon: "map",
@@ -1180,7 +1197,9 @@ const fullMapTab = {
   async executeSearch(query, page = 1, context) {
     const q = safeTrim(query);
     if (!q) return { results: [], totalPages: 1 };
-    const preferredLocationText = sanitizeText(context?.preferredLocation);
+    const preferredLocationText = sanitizeText(
+      context?.preferredLocation || fullMapPreferredLocation,
+    );
     const preferredLocation = preferredLocationText
       ? await withTimeout(geocodePreferredLocation(preferredLocationText), 1600)
       : null;
