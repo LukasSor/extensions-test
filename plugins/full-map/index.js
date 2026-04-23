@@ -197,6 +197,53 @@ const extractLocationTokens = (query) => {
   return tokenizeQuery(m[1]).slice(0, 4);
 };
 
+const haversineKm = (lat1, lon1, lat2, lon2) => {
+  const toRad = (d) => (d * Math.PI) / 180;
+  const R = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+};
+
+const PREFERRED_LOC_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const preferredLocationGeoCache = new Map();
+
+const geocodePreferredLocation = async (locationText) => {
+  const key = normalizeQueryText(locationText);
+  if (!key) return null;
+  const hit = preferredLocationGeoCache.get(key);
+  if (hit && Date.now() - hit.ts < PREFERRED_LOC_TTL_MS) return hit.value;
+
+  const url = new URL("https://nominatim.openstreetmap.org/search");
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("limit", "1");
+  url.searchParams.set("q", locationText);
+
+  const res = await fetch(url.toString(), {
+    headers: {
+      Accept: "application/json",
+      "User-Agent": "degoog-full-map-tab/1.0 (https://github.com/fccview/degoog)",
+    },
+  }).catch(() => null);
+  if (!res?.ok) {
+    preferredLocationGeoCache.set(key, { ts: Date.now(), value: null });
+    return null;
+  }
+  const rows = await res.json().catch(() => null);
+  const row = Array.isArray(rows) ? rows[0] : null;
+  const lat = Number(row?.lat);
+  const lon = Number(row?.lon);
+  const value =
+    Number.isFinite(lat) && Number.isFinite(lon)
+      ? { lat, lon, label: sanitizeText(locationText) }
+      : null;
+  preferredLocationGeoCache.set(key, { ts: Date.now(), value });
+  return value;
+};
+
 const scorePlaceForQuery = (place, querySignals) => {
   const nameNorm = normalizeQueryText(place.name);
   const addressNorm = normalizeQueryText(
@@ -230,6 +277,16 @@ const scorePlaceForQuery = (place, querySignals) => {
   }
 
   if (Number.isFinite(place.importance)) score += Math.max(0, Math.min(1, place.importance)) * 20;
+
+  const pref = querySignals.preferredLocation;
+  if (pref && Number.isFinite(place.lat) && Number.isFinite(place.lon)) {
+    const dKm = haversineKm(pref.lat, pref.lon, place.lat, place.lon);
+    if (dKm <= 1) score += 34;
+    else if (dKm <= 5) score += 24;
+    else if (dKm <= 12) score += 14;
+    else if (dKm <= 25) score += 7;
+    else score += Math.max(0, 6 - dKm * 0.16);
+  }
 
   return score;
 };
@@ -1123,12 +1180,20 @@ const fullMapTab = {
   async executeSearch(query, page = 1, context) {
     const q = safeTrim(query);
     if (!q) return { results: [], totalPages: 1 };
+    const preferredLocationText = sanitizeText(context?.preferredLocation);
+    const preferredLocation = preferredLocationText
+      ? await withTimeout(geocodePreferredLocation(preferredLocationText), 1600)
+      : null;
     const querySignals = {
       norm: normalizeQueryText(q),
       tokens: tokenizeQuery(q),
       wantedPoi: detectWantedPoi(tokenizeQuery(q)),
       locationTokens: extractLocationTokens(q),
+      preferredLocation,
     };
+    if (preferredLocationText && querySignals.locationTokens.length === 0) {
+      querySignals.locationTokens = tokenizeQuery(preferredLocationText).slice(0, 4);
+    }
 
     await ensureEnrichmentCacheLoaded();
 

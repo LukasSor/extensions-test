@@ -106,7 +106,7 @@
         "path": "plugins/rss",
         "name": "Home RSS Feeds",
         "description": "Shows RSS feed items above search results.",
-        "version": "1.4.2",
+        "version": "1.4.3",
         "type": "slot"
       },
       {
@@ -184,8 +184,8 @@
       {
         "path": "engines/full-map-tripadvisor",
         "name": "Full Map (Tripadvisor)",
-        "description": "Stores the Tripadvisor Content API key for the Full Map tab. Appears under Settings → Engines in the Maps section (not Web); returns no search results — leave disabled as a default engine.",
-        "version": "1.0.2"
+        "description": "Stores the Tripadvisor Content API key and optional preferred location for the Full Map tab. Appears under Settings → Engines in the Maps section (not Web); returns no search results — leave disabled as a default engine.",
+        "version": "1.0.3"
       },
       {
         "path": "engines/ecosia",

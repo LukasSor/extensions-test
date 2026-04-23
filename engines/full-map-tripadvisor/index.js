@@ -25,12 +25,24 @@ export default class FullMapTripadvisorEngine {
       description:
         "Register at https://www.tripadvisor.com/developers — Content API key. The Full Map tab reads this value (engine id engine-full-map-tripadvisor). Up to the first 8 map results per page: 2 API calls each when not cached. Cached on disk (~30 days). Follow Tripadvisor display rules in the map panel.",
     },
+    {
+      key: "preferredLocation",
+      label: "Preferred location (city or address)",
+      type: "text",
+      placeholder: "e.g. Wels, Austria",
+      description:
+        "Optional. Helps Full Map rank places closer to your usual area, similar to a maps home-location bias.",
+    },
   ];
 
   configure(settings) {
     this._tripadvisorApiKey =
       typeof settings?.tripadvisorApiKey === "string"
         ? settings.tripadvisorApiKey.trim()
+        : "";
+    this._preferredLocation =
+      typeof settings?.preferredLocation === "string"
+        ? settings.preferredLocation.trim()
         : "";
   }
 
