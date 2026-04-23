@@ -1093,7 +1093,6 @@
         schemeObserver.disconnect();
         window.removeEventListener("resize", onResize);
         map.remove();
-        setFullMapMode(false);
       },
     };
   };
@@ -1116,6 +1115,9 @@
     const container = document.getElementById("results-list");
     if (!container) return;
     setFullMapMode(true);
+    requestAnimationFrame(() => {
+      if (isFullMapActive()) setFullMapMode(true);
+    });
     if (container.querySelector(".full-map-root")) return;
 
     const places = parseResults(container);
