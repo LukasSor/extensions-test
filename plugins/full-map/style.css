@@ -93,34 +93,6 @@ html[data-theme="light"] .full-map-root {
   flex-direction: column;
 }
 
-.fm-search-row {
-  display: flex;
-  gap: 0.45rem;
-  padding: 0.65rem;
-  border-bottom: 1px solid var(--fm-panel-border);
-}
-
-.fm-search-input {
-  flex: 1;
-  min-width: 0;
-  height: 2.3rem;
-  border: 1px solid var(--fm-panel-border);
-  border-radius: 8px;
-  background: var(--bg, var(--fm-panel-bg));
-  color: var(--text-primary);
-  padding: 0 0.65rem;
-}
-
-.fm-search-button {
-  height: 2.3rem;
-  border: none;
-  border-radius: 8px;
-  background: var(--primary, #1a73e8);
-  color: #fff;
-  padding: 0 0.75rem;
-  cursor: pointer;
-}
-
 .fm-location-row {
   display: flex;
   gap: 0.35rem;

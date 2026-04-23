@@ -987,10 +987,6 @@
     container.innerHTML = `
       <section class="full-map-root">
         <aside class="full-map-left">
-          <div class="fm-search-row">
-            <input class="fm-search-input" type="search" placeholder="Search places in this result set" />
-            <button type="button" class="fm-search-button">Search</button>
-          </div>
           <div class="fm-location-row">
             <input class="fm-location-input" type="text" placeholder="Set my location (city/address)" value="${esc(getPreferredLocationLabel())}" />
             <button type="button" class="fm-location-set">Set</button>
@@ -1025,8 +1021,6 @@
     const mapEl = container.querySelector(".fm-map-wrap .fm-map");
     const infoEl = container.querySelector(".fm-info");
     const resultsEl = container.querySelector(".fm-results");
-    const filterInput = container.querySelector(".fm-search-input");
-    const searchBtn = container.querySelector(".fm-search-button");
     const locationInput = container.querySelector(".fm-location-input");
     const locationSetBtn = container.querySelector(".fm-location-set");
     const locationClearBtn = container.querySelector(".fm-location-clear");
@@ -1036,8 +1030,6 @@
       !mapEl ||
       !infoEl ||
       !resultsEl ||
-      !filterInput ||
-      !searchBtn ||
       !locationInput ||
       !locationSetBtn ||
       !locationClearBtn ||
@@ -1260,32 +1252,6 @@
       }
     };
 
-    const applyFilter = () => {
-      const q = String(filterInput.value || "").trim().toLowerCase();
-      visibleIndexes = [];
-      resultsEl.querySelectorAll(".fm-result").forEach((el) => {
-        const idx = Number(el.getAttribute("data-fm-index"));
-        const place = places[idx];
-        const haystack = [place.name, place.address, place.city, place.country, place.kind]
-          .join(" ")
-          .toLowerCase();
-        const visible = !q || haystack.includes(q);
-        el.hidden = !visible;
-        if (visible) visibleIndexes.push(idx);
-      });
-
-      markers.forEach((marker, idx) => {
-        const visible = visibleIndexes.includes(idx);
-        if (visible && !map.hasLayer(marker)) marker.addTo(map);
-        if (!visible && map.hasLayer(marker)) marker.remove();
-      });
-
-      focusForIndexes(visibleIndexes);
-      if (!visibleIndexes.includes(selectedIndex) && visibleIndexes.length > 0) {
-        selectPlace(visibleIndexes[0], false);
-      }
-    };
-
     places.forEach((place, idx) => {
       const marker = L.marker([place.lat, place.lon], {
         icon: makeMarkerIcon(L, place.poi, false, useFaIcons),
@@ -1305,22 +1271,6 @@
         const idx = Number(el.getAttribute("data-fm-index"));
         selectPlace(idx, true);
       });
-    });
-
-    filterInput.addEventListener("input", applyFilter);
-    searchBtn.addEventListener("click", () => {
-      const next = String(filterInput.value || "").trim();
-      if (!next) return;
-      const params = new URLSearchParams(window.location.search);
-      params.set("q", next);
-      params.set("type", TAB_TYPE);
-      params.delete("page");
-      window.location.href = `/search?${params.toString()}`;
-    });
-    filterInput.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter") return;
-      e.preventDefault();
-      searchBtn.click();
     });
 
     const refreshForPreferredLocationChange = () => {
