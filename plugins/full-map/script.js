@@ -1115,8 +1115,8 @@
 
     const container = document.getElementById("results-list");
     if (!container) return;
-    if (container.querySelector(".full-map-root")) return;
     setFullMapMode(true);
+    if (container.querySelector(".full-map-root")) return;
 
     const places = parseResults(container);
     if (places.length === 0) return;
