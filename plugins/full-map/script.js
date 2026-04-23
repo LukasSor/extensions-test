@@ -1087,11 +1087,27 @@
     setTimeout(onResize, 80);
     requestAnimationFrame(() => requestAnimationFrame(onResize));
 
+    /** Keep full-map layout pinned while tab is active; host UI may
+     *  reflow/reapply default classes when switching tabs. */
+    const enforceFullMapMode = () => {
+      if (!isFullMapActive()) return;
+      setFullMapMode(true);
+    };
+    const layoutLockInterval = setInterval(enforceFullMapMode, 250);
+    const layoutLockObserver = new MutationObserver(() => enforceFullMapMode());
+    layoutLockObserver.observe(document.body, {
+      attributes: true,
+      subtree: true,
+      attributeFilter: ["class"],
+    });
+
     activeView = {
       teardown() {
         schemeMq.removeEventListener("change", onAppearanceChange);
         schemeObserver.disconnect();
         window.removeEventListener("resize", onResize);
+        clearInterval(layoutLockInterval);
+        layoutLockObserver.disconnect();
         map.remove();
       },
     };
