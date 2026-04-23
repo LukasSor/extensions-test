@@ -1100,6 +1100,8 @@ const fullMapTab = {
     });
 
     const tripadvisorApiKey = await resolveTripadvisorApiKey(context);
+    const taConfigured = Boolean(safeTrim(tripadvisorApiKey));
+    pagePlaces = pagePlaces.map((p) => ({ ...p, taConfigured }));
     if (tripadvisorApiKey) {
       /**
        * Cost-control policy:

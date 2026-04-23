@@ -47,6 +47,18 @@
   box-sizing: border-box;
 }
 
+.fm-global-hint {
+  grid-column: 1 / -1;
+  margin: 0.1rem 0.2rem 0;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--fm-panel-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--fm-panel-bg) 88%, transparent);
+  color: var(--fm-muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
 html[data-theme="dark"] .full-map-root {
   --fm-panel-bg: color-mix(in srgb, var(--bg-light, #1e293b) 88%, #0f172a);
   --fm-panel-border: color-mix(in srgb, var(--border-light, #334155) 85%, #0f172a);

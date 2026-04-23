@@ -446,6 +446,7 @@
               }))
               .slice(0, 5)
           : [],
+        taConfigured: payload.taConfigured === true,
       });
     }
     return places;
@@ -705,11 +706,6 @@
     const osmFallback =
       !taHeader && place.reviewSource !== "tripadvisor" ? renderOsmRating(place) : "";
 
-    const missingKeyHint =
-      !taHeader && !place.taReviews?.length && !place.taPhotos?.length
-        ? `<p class="fm-ta-empty">No Tripadvisor data for this place. Add a <strong>Tripadvisor Content</strong> API key under <strong>Settings → Engines → Maps → Full Map (Tripadvisor)</strong>.</p>`
-        : "";
-
     const osmLink = `<a class="fm-open-link" href="${esc(place.sourceUrl)}" target="_blank" rel="noopener">Open in OpenStreetMap</a>`;
 
     return `
@@ -724,7 +720,6 @@
         ${description}
         ${osmFallback}
         ${reviewsSection}
-        ${missingKeyHint}
         <div class="fm-detail-footer">${osmLink}</div>
       </div>
     `;
@@ -767,6 +762,10 @@
       </button>`;
       })
       .join("");
+    const hasTripadvisorKey = places.some((p) => p.taConfigured === true);
+    const globalTaHint = hasTripadvisorKey
+      ? ""
+      : `<p class="fm-global-hint">Tripadvisor API key not set. Add one in <strong>Settings → Engines → Maps → Full Map (Tripadvisor)</strong> to enable ratings, photos and reviews.</p>`;
 
     container.innerHTML = `
       <section class="full-map-root">
@@ -795,6 +794,7 @@
           </div>
           <div class="fm-info"><p>Select a result or marker to see details.</p></div>
         </section>
+        ${globalTaHint}
       </section>
     `;
 
