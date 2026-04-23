@@ -182,85 +182,111 @@ const fetchPhotonResults = async (query) => {
   return features;
 };
 
-const fetchWikiPreviewByCoordRaw = async (lat, lon) => {
-  const params = new URLSearchParams({
+const WIKI_API = "https://en.wikipedia.org/w/api.php";
+const WIKI_HEADERS = {
+  Accept: "application/json",
+  "User-Agent": "degoog-full-map-tab/1.0",
+};
+
+/** Haversine in meters — used to verify a Wikipedia hit is actually on-site. */
+const _distanceMeters = (lat1, lon1, lat2, lon2) => {
+  const toRad = (d) => (d * Math.PI) / 180;
+  const R = 6371000;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(a));
+};
+
+/** Meters within which we still trust a name-matched Wikipedia article is the place. */
+const WIKI_MAX_DISTANCE_M = 600;
+
+/**
+ * Search Wikipedia by **name**, then verify the best hit is actually on-site via
+ * its page coordinates. This avoids geosearch's failure mode (attaching the
+ * nearest article regardless of whether it's about the place): tourist spots
+ * like "Stadtplatz Wels" match their real article; a random noodle bar yields
+ * no hit with coordinates nearby, and we return null — no wrong description.
+ */
+const fetchWikiPreviewByNameRaw = async (name, lat, lon) => {
+  const query = safeTrim(name);
+  if (!query) return null;
+
+  const search = new URLSearchParams({
     action: "query",
     format: "json",
-    generator: "geosearch",
-    ggscoord: `${lat}|${lon}`,
-    ggsradius: "1200",
-    ggslimit: "1",
-    prop: "pageimages|extracts",
+    list: "search",
+    srsearch: query,
+    srlimit: "5",
+    srprop: "",
+    origin: "*",
+  });
+  const sres = await fetch(`${WIKI_API}?${search.toString()}`, { headers: WIKI_HEADERS })
+    .catch(() => null);
+  if (!sres?.ok) return null;
+  const sdata = await sres.json().catch(() => null);
+  const hits = Array.isArray(sdata?.query?.search) ? sdata.query.search : [];
+  if (hits.length === 0) return null;
+
+  const pageids = hits
+    .map((h) => Number(h?.pageid))
+    .filter((n) => Number.isFinite(n))
+    .slice(0, 5)
+    .join("|");
+  if (!pageids) return null;
+
+  const detail = new URLSearchParams({
+    action: "query",
+    format: "json",
+    pageids,
+    prop: "coordinates|extracts|pageimages",
     exintro: "1",
     explaintext: "1",
     exsentences: "3",
     pithumbsize: "680",
-    pilimit: "1",
+    colimit: "5",
     origin: "*",
   });
-
-  const res = await fetch(`https://en.wikipedia.org/w/api.php?${params.toString()}`, {
-    headers: {
-      Accept: "application/json",
-      "User-Agent": "degoog-full-map-tab/1.0",
-    },
-  }).catch(() => null);
-
-  if (!res || !res.ok) return null;
-  const data = await res.json().catch(() => null);
-  const pages = data?.query?.pages;
+  const dres = await fetch(`${WIKI_API}?${detail.toString()}`, { headers: WIKI_HEADERS })
+    .catch(() => null);
+  if (!dres?.ok) return null;
+  const ddata = await dres.json().catch(() => null);
+  const pages = ddata?.query?.pages;
   if (!pages || typeof pages !== "object") return null;
-  const firstPage = Object.values(pages)[0];
-  if (!firstPage || typeof firstPage !== "object") return null;
-  const title = sanitizeText(firstPage.title);
-  const extract = sanitizeText(firstPage.extract);
-  const image = sanitizeText(firstPage.thumbnail?.source);
 
+  let best = null;
+  let bestDist = Infinity;
+  for (const pg of Object.values(pages)) {
+    const coords = Array.isArray(pg?.coordinates) ? pg.coordinates[0] : null;
+    if (!coords) continue;
+    const plat = Number(coords.lat);
+    const plon = Number(coords.lon);
+    if (!Number.isFinite(plat) || !Number.isFinite(plon)) continue;
+    const d = _distanceMeters(lat, lon, plat, plon);
+    if (d < bestDist && d <= WIKI_MAX_DISTANCE_M) {
+      best = pg;
+      bestDist = d;
+    }
+  }
+  if (!best) return null;
+
+  const title = sanitizeText(best.title);
+  const extract = sanitizeText(best.extract);
+  const image = sanitizeText(best.thumbnail?.source);
   if (!title && !extract && !image) return null;
-  return {
-    title,
-    extract,
-    image,
-  };
+  return { title, extract, image };
 };
 
-const fetchWikiPreviewByCoord = async (lat, lon) => {
+const fetchWikiPreviewByName = async (name, lat, lon) => {
   await ensureEnrichmentCacheLoaded();
-  const wk = wikiGeoKey(lat, lon);
+  const wk = wikiNameKey(name, lat, lon);
   const hit = wikiCacheGet(wk);
   if (hit !== undefined) return hit;
-  const preview = await fetchWikiPreviewByCoordRaw(lat, lon);
+  const preview = await fetchWikiPreviewByNameRaw(name, lat, lon);
   wikiCacheSet(wk, preview);
   return preview;
-};
-
-/**
- * Wikipedia geosearch returns the nearest article within ~1.2km, which is
- * frequently a different nearby landmark (e.g. airfield next to a Burger King).
- * Only trust it when the article title overlaps the place name meaningfully —
- * otherwise we'd attach a random description/photo that misleads the user.
- */
-const _normalizeForMatch = (value) =>
-  String(value || "")
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-
-const isWikiRelevantToPlace = (wikiTitle, placeName) => {
-  const wt = _normalizeForMatch(wikiTitle);
-  const pn = _normalizeForMatch(placeName);
-  if (!wt || !pn) return false;
-  if (wt === pn) return true;
-  if (wt.includes(pn) || pn.includes(wt)) return true;
-
-  const wTokens = new Set(wt.split(" ").filter((t) => t.length >= 4));
-  const pTokens = pn.split(" ").filter((t) => t.length >= 4);
-  const shared = pTokens.filter((t) => wTokens.has(t));
-  if (shared.length >= 2) return true;
-  if (shared.length === 1 && shared[0].length >= 6) return true;
-  return false;
 };
 
 const withTimeout = async (promise, ms = 2600) => {
@@ -397,7 +423,11 @@ const reviewCacheSet = (bucket, id, patch) => {
   cacheDirty = true;
 };
 
-const wikiGeoKey = (lat, lon) => `${lat.toFixed(3)}_${lon.toFixed(3)}`;
+/** Coord + name keyed: different places at the same rough coord resolve separately. */
+const wikiNameKey = (name, lat, lon) => {
+  const normName = safeTrim(name).toLowerCase().slice(0, 80);
+  return `${normName}|${lat.toFixed(3)}_${lon.toFixed(3)}`;
+};
 
 const wikiCacheGet = (wk) => {
   const e = enrichmentCache?.wiki?.[wk];
@@ -1142,15 +1172,21 @@ const fullMapTab = {
         ) {
           return place;
         }
-        const wiki = await withTimeout(fetchWikiPreviewByCoord(place.lat, place.lon), 2200);
+        /**
+         * Name-based Wikipedia lookup verified by coord proximity (≤600m).
+         * Returns null for ordinary POIs (restaurants, shops) that have no
+         * dedicated article — so we never attach a nearby-but-unrelated page.
+         */
+        const wiki = await withTimeout(fetchWikiPreviewByName(place.name, place.lat, place.lon), 3000);
         if (!wiki) return place;
-        /** Geosearch finds the closest article, not necessarily this place. */
-        if (!isWikiRelevantToPlace(wiki.title, place.name)) return place;
         return {
           ...place,
           wikiTitle: sanitizeText(wiki.title),
           wikiSummary: sanitizeText(wiki.extract),
           image: sanitizeText(wiki.image),
+          /** Signals to the client that this wiki hit was name-matched and
+           *  distance-verified on the server, so no client-side filter needed. */
+          wikiVerified: true,
         };
       }),
     );

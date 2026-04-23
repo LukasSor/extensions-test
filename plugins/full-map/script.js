@@ -320,10 +320,10 @@
   };
 
   /**
-   * Defense-in-depth against Wikipedia's geosearch attaching a nearby but
-   * unrelated article to a place (e.g. "Wels Hauptbahnhof" sticking onto a
-   * Wok & Box across the street). Server applies the same check; this one
-   * also filters stale cached payloads issued before the server restart.
+   * Stale-payload guard for pre-v1.3.4 server responses whose wiki field was
+   * attached via geosearch (nearest nearby article). Version-1.3.4+ servers
+   * attach wiki only after a name-matched + distance-verified lookup; those
+   * payloads include `wikiVerified: true` and bypass this check.
    */
   const _normalizeForMatch = (value) =>
     String(value || "")
@@ -384,7 +384,9 @@
       const poi = resolvePoi(payload);
       const placeName = String(payload.name || titleEl.textContent || "Place");
       const rawWikiTitle = String(payload.wikiTitle || "");
-      const wikiOk = rawWikiTitle && isWikiRelevantToPlace(rawWikiTitle, placeName);
+      const wikiOk =
+        rawWikiTitle &&
+        (payload.wikiVerified === true || isWikiRelevantToPlace(rawWikiTitle, placeName));
       places.push({
         id: String(payload.id || `${lat},${lon}`),
         name: placeName,
