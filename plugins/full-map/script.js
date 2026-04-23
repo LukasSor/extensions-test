@@ -320,6 +320,8 @@
   };
 
   let geoLocationPromise = null;
+  const PREF_LOCATION_KEY = "full-map-preferred-location-v1";
+  const PREF_LOCATION_GEO_KEY = "full-map-preferred-location-geo-v1";
 
   const getBrowserLocationIfGranted = async () => {
     if (!navigator?.geolocation) return null;
@@ -345,6 +347,91 @@
       );
     });
     return geoLocationPromise;
+  };
+
+  const getPreferredLocationLabel = () => {
+    try {
+      return String(localStorage.getItem(PREF_LOCATION_KEY) || "").trim();
+    } catch {
+      return "";
+    }
+  };
+
+  const setPreferredLocationLabel = (value) => {
+    try {
+      const v = String(value || "").trim();
+      if (!v) localStorage.removeItem(PREF_LOCATION_KEY);
+      else localStorage.setItem(PREF_LOCATION_KEY, v);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const clearPreferredLocation = () => {
+    try {
+      localStorage.removeItem(PREF_LOCATION_KEY);
+      localStorage.removeItem(PREF_LOCATION_GEO_KEY);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const loadPreferredLocationGeo = () => {
+    try {
+      const raw = localStorage.getItem(PREF_LOCATION_GEO_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      const lat = Number(parsed?.lat);
+      const lon = Number(parsed?.lon);
+      const label = String(parsed?.label || "").trim();
+      const ts = Number(parsed?.ts);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon) || !label) return null;
+      if (!Number.isFinite(ts) || Date.now() - ts > 30 * 24 * 60 * 60 * 1000) return null;
+      return { lat, lon, label };
+    } catch {
+      return null;
+    }
+  };
+
+  const savePreferredLocationGeo = (geo) => {
+    try {
+      if (!geo) {
+        localStorage.removeItem(PREF_LOCATION_GEO_KEY);
+        return;
+      }
+      localStorage.setItem(
+        PREF_LOCATION_GEO_KEY,
+        JSON.stringify({
+          lat: geo.lat,
+          lon: geo.lon,
+          label: geo.label,
+          ts: Date.now(),
+        }),
+      );
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const geocodePreferredLocation = async (label) => {
+    const q = String(label || "").trim();
+    if (!q) return null;
+    const cached = loadPreferredLocationGeo();
+    if (cached && cached.label.toLowerCase() === q.toLowerCase()) return cached;
+    const url = new URL("https://nominatim.openstreetmap.org/search");
+    url.searchParams.set("q", q);
+    url.searchParams.set("format", "jsonv2");
+    url.searchParams.set("limit", "1");
+    const res = await fetch(url.toString()).catch(() => null);
+    if (!res?.ok) return null;
+    const rows = await res.json().catch(() => null);
+    const row = Array.isArray(rows) ? rows[0] : null;
+    const lat = Number(row?.lat);
+    const lon = Number(row?.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+    const geo = { lat, lon, label: q };
+    savePreferredLocationGeo(geo);
+    return geo;
   };
 
   const haversineKm = (lat1, lon1, lat2, lon2) => {
@@ -904,6 +991,12 @@
             <input class="fm-search-input" type="search" placeholder="Search places in this result set" />
             <button type="button" class="fm-search-button">Search</button>
           </div>
+          <div class="fm-location-row">
+            <input class="fm-location-input" type="text" placeholder="Set my location (city/address)" value="${esc(getPreferredLocationLabel())}" />
+            <button type="button" class="fm-location-set">Set</button>
+            <button type="button" class="fm-location-clear">Clear</button>
+          </div>
+          <div class="fm-location-status" aria-live="polite"></div>
           <div class="fm-results">${listItems}</div>
         </aside>
         <section class="full-map-right">
@@ -934,7 +1027,24 @@
     const resultsEl = container.querySelector(".fm-results");
     const filterInput = container.querySelector(".fm-search-input");
     const searchBtn = container.querySelector(".fm-search-button");
-    if (!root || !mapEl || !infoEl || !resultsEl || !filterInput || !searchBtn) return;
+    const locationInput = container.querySelector(".fm-location-input");
+    const locationSetBtn = container.querySelector(".fm-location-set");
+    const locationClearBtn = container.querySelector(".fm-location-clear");
+    const locationStatusEl = container.querySelector(".fm-location-status");
+    if (
+      !root ||
+      !mapEl ||
+      !infoEl ||
+      !resultsEl ||
+      !filterInput ||
+      !searchBtn ||
+      !locationInput ||
+      !locationSetBtn ||
+      !locationClearBtn ||
+      !locationStatusEl
+    ) {
+      return;
+    }
 
     const map = L.map(mapEl, { zoomControl: true, preferCanvas: true });
 
@@ -1213,6 +1323,38 @@
       searchBtn.click();
     });
 
+    const refreshForPreferredLocationChange = () => {
+      lastSignature = "";
+      queueMicrotask(() => {
+        void maybeRender();
+      });
+    };
+
+    locationSetBtn.addEventListener("click", async () => {
+      const raw = String(locationInput.value || "").trim();
+      if (!raw) {
+        locationStatusEl.textContent = "Enter a city or address first.";
+        return;
+      }
+      locationStatusEl.textContent = "Resolving location...";
+      const geo = await geocodePreferredLocation(raw);
+      if (!geo) {
+        locationStatusEl.textContent = "Could not resolve that location.";
+        return;
+      }
+      setPreferredLocationLabel(raw);
+      savePreferredLocationGeo(geo);
+      locationStatusEl.textContent = `Using location: ${geo.label}`;
+      refreshForPreferredLocationChange();
+    });
+
+    locationClearBtn.addEventListener("click", () => {
+      clearPreferredLocation();
+      locationInput.value = "";
+      locationStatusEl.textContent = "Location bias cleared.";
+      refreshForPreferredLocationChange();
+    });
+
     const onResize = () => map.invalidateSize();
     window.addEventListener("resize", onResize);
     setTimeout(onResize, 80);
@@ -1270,7 +1412,17 @@
     const places = parseResults(container);
     if (places.length === 0) return;
     const queryText = new URLSearchParams(window.location.search).get("q") || "";
-    const geo = await getBrowserLocationIfGranted();
+    const nearMeIntent = /\b(near me|nearby|around me|closest|nearest)\b/i.test(
+      queryText,
+    );
+    const preferredLabel = getPreferredLocationLabel();
+    const preferredGeo = preferredLabel
+      ? await geocodePreferredLocation(preferredLabel)
+      : null;
+    const browserGeo = await getBrowserLocationIfGranted();
+    const geo = nearMeIntent
+      ? browserGeo || preferredGeo
+      : preferredGeo || browserGeo;
     const rankedPlaces = applyGeoDistanceBoost(places, geo, queryText);
 
     const sig = getSignature(rankedPlaces);

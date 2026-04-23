@@ -121,6 +121,51 @@ html[data-theme="light"] .full-map-root {
   cursor: pointer;
 }
 
+.fm-location-row {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.45rem 0.65rem 0.5rem;
+  border-bottom: 1px solid var(--fm-panel-border);
+}
+
+.fm-location-input {
+  flex: 1;
+  min-width: 0;
+  height: 2rem;
+  border: 1px solid var(--fm-panel-border);
+  border-radius: 8px;
+  background: var(--bg, var(--fm-panel-bg));
+  color: var(--text-primary);
+  padding: 0 0.55rem;
+  font-size: 0.8rem;
+}
+
+.fm-location-set,
+.fm-location-clear {
+  height: 2rem;
+  border: 1px solid var(--fm-panel-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--fm-panel-bg) 84%, transparent);
+  color: var(--text-primary);
+  padding: 0 0.55rem;
+  cursor: pointer;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.fm-location-set {
+  background: var(--primary, #1a73e8);
+  border-color: var(--primary, #1a73e8);
+  color: #fff;
+}
+
+.fm-location-status {
+  min-height: 1.15rem;
+  padding: 0 0.75rem 0.35rem;
+  color: var(--fm-muted);
+  font-size: 0.72rem;
+}
+
 .fm-results {
   overflow: auto;
   padding: 0.35rem;
