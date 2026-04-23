@@ -319,6 +319,34 @@
     return Number.isFinite(x) ? x : fallback;
   };
 
+  /**
+   * Defense-in-depth against Wikipedia's geosearch attaching a nearby but
+   * unrelated article to a place (e.g. "Wels Hauptbahnhof" sticking onto a
+   * Wok & Box across the street). Server applies the same check; this one
+   * also filters stale cached payloads issued before the server restart.
+   */
+  const _normalizeForMatch = (value) =>
+    String(value || "")
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+
+  const isWikiRelevantToPlace = (wikiTitle, placeName) => {
+    const wt = _normalizeForMatch(wikiTitle);
+    const pn = _normalizeForMatch(placeName);
+    if (!wt || !pn) return false;
+    if (wt === pn) return true;
+    if (wt.includes(pn) || pn.includes(wt)) return true;
+    const wTokens = new Set(wt.split(" ").filter((t) => t.length >= 4));
+    const pTokens = pn.split(" ").filter((t) => t.length >= 4);
+    const shared = pTokens.filter((t) => wTokens.has(t));
+    if (shared.length >= 2) return true;
+    if (shared.length === 1 && shared[0].length >= 6) return true;
+    return false;
+  };
+
   /** Route remote images through degoog proxy (Wikipedia / Tripadvisor CDNs, mixed content). */
   const proxiedImageSrc = (url) => {
     const u = String(url || "").trim();
@@ -354,9 +382,12 @@
       const osmKey = String(payload.osmKey ?? payload.osm_key ?? "").trim();
       const osmValue = String(payload.osmValue ?? payload.osm_value ?? "").trim();
       const poi = resolvePoi(payload);
+      const placeName = String(payload.name || titleEl.textContent || "Place");
+      const rawWikiTitle = String(payload.wikiTitle || "");
+      const wikiOk = rawWikiTitle && isWikiRelevantToPlace(rawWikiTitle, placeName);
       places.push({
         id: String(payload.id || `${lat},${lon}`),
-        name: String(payload.name || titleEl.textContent || "Place"),
+        name: placeName,
         lat,
         lon,
         address: String(payload.address || ""),
@@ -370,9 +401,9 @@
         website: String(payload.website || ""),
         phone: String(payload.phone || ""),
         openingHours: String(payload.openingHours || ""),
-        wikiTitle: String(payload.wikiTitle || ""),
-        wikiSummary: String(payload.wikiSummary || ""),
-        image: String(payload.image || ""),
+        wikiTitle: wikiOk ? rawWikiTitle : "",
+        wikiSummary: wikiOk ? String(payload.wikiSummary || "") : "",
+        image: wikiOk ? String(payload.image || "") : "",
         reviewRating: finiteOr(payload.reviewRating, null),
         reviewMax: finiteOr(payload.reviewMax, 5) ?? 5,
         reviewCount: finiteOr(payload.reviewCount, null),
