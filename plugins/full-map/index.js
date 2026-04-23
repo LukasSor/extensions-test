@@ -143,6 +143,97 @@ const pickPoiCategory = (props) => {
   return "place";
 };
 
+const normalizeQueryText = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+const tokenizeQuery = (value) =>
+  normalizeQueryText(value)
+    .split(" ")
+    .map((s) => s.trim())
+    .filter((s) => s.length >= 2);
+
+const QUERY_POI_HINTS = {
+  food: ["restaurant", "eat", "food", "noodle", "pizza", "burger", "kebab", "sushi", "ramen", "cafe"],
+  drink: ["bar", "pub", "cocktail", "beer", "wine", "nightclub"],
+  lodging: ["hotel", "hostel", "motel", "stay", "accommodation"],
+  grocery: ["supermarket", "grocery", "market"],
+  shop: ["shop", "store", "mall"],
+  transit_rail: ["train", "rail", "station"],
+  transit_bus: ["bus", "coach"],
+  air: ["airport", "airfield", "terminal"],
+  park: ["park", "garden"],
+  medical: ["hospital", "clinic", "doctor", "dentist"],
+};
+
+const detectWantedPoi = (tokens) => {
+  const scoreByPoi = new Map();
+  for (const [poi, words] of Object.entries(QUERY_POI_HINTS)) {
+    let score = 0;
+    for (const t of tokens) {
+      if (words.some((w) => t === w || t.includes(w) || w.includes(t))) score += 1;
+    }
+    if (score > 0) scoreByPoi.set(poi, score);
+  }
+  let bestPoi = "";
+  let best = 0;
+  for (const [poi, score] of scoreByPoi.entries()) {
+    if (score > best) {
+      best = score;
+      bestPoi = poi;
+    }
+  }
+  return bestPoi;
+};
+
+const extractLocationTokens = (query) => {
+  const q = String(query || "");
+  const m = q.match(/\b(?:in|near|around|at)\s+(.+)$/i);
+  if (!m) return [];
+  return tokenizeQuery(m[1]).slice(0, 4);
+};
+
+const scorePlaceForQuery = (place, querySignals) => {
+  const nameNorm = normalizeQueryText(place.name);
+  const addressNorm = normalizeQueryText(
+    [place.address, place.city, place.country, place.kind].filter(Boolean).join(" "),
+  );
+  const qNorm = querySignals.norm;
+  const tokens = querySignals.tokens;
+  if (!qNorm || tokens.length === 0) return 0;
+
+  let score = 0;
+
+  if (nameNorm === qNorm) score += 240;
+  else if (nameNorm.startsWith(qNorm)) score += 130;
+  else if (nameNorm.includes(qNorm)) score += 90;
+
+  for (const t of tokens) {
+    if (nameNorm.includes(t)) score += 22;
+    else if (addressNorm.includes(t)) score += 9;
+  }
+
+  const missingNameTokens = tokens.filter((t) => !nameNorm.includes(t)).length;
+  score -= missingNameTokens * 6;
+
+  if (querySignals.wantedPoi && place.poi === querySignals.wantedPoi) score += 36;
+  if (querySignals.locationTokens.length > 0) {
+    let locHits = 0;
+    for (const lt of querySignals.locationTokens) {
+      if (addressNorm.includes(lt)) locHits += 1;
+    }
+    score += locHits * 18;
+  }
+
+  if (Number.isFinite(place.importance)) score += Math.max(0, Math.min(1, place.importance)) * 20;
+
+  return score;
+};
+
 const buildAddress = (feature) => {
   const props = feature?.properties || {};
   const chunks = [
@@ -1032,6 +1123,12 @@ const fullMapTab = {
   async executeSearch(query, page = 1, context) {
     const q = safeTrim(query);
     if (!q) return { results: [], totalPages: 1 };
+    const querySignals = {
+      norm: normalizeQueryText(q),
+      tokens: tokenizeQuery(q),
+      wantedPoi: detectWantedPoi(tokenizeQuery(q)),
+      locationTokens: extractLocationTokens(q),
+    };
 
     await ensureEnrichmentCacheLoaded();
 
@@ -1086,8 +1183,18 @@ const fullMapTab = {
         website: sanitizeText(props.website),
         phone: sanitizeText(props.phone),
         openingHours: sanitizeText(props.opening_hours),
+        importance: Number.isFinite(Number(props.importance))
+          ? Number(props.importance)
+          : null,
       });
     }
+
+    parsed.sort((a, b) => {
+      const sa = scorePlaceForQuery(a, querySignals);
+      const sb = scorePlaceForQuery(b, querySignals);
+      if (sb !== sa) return sb - sa;
+      return 0;
+    });
 
     const totalPages = Math.max(1, Math.ceil(parsed.length / perPage));
     const start = (curPage - 1) * perPage;

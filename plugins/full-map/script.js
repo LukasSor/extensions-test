@@ -319,6 +319,131 @@
     return Number.isFinite(x) ? x : fallback;
   };
 
+  let geoLocationPromise = null;
+
+  const getBrowserLocationIfGranted = async () => {
+    if (!navigator?.geolocation) return null;
+    /** Avoid opening permission prompts; only use if already granted. */
+    if (!navigator.permissions?.query) return null;
+    try {
+      const perm = await navigator.permissions.query({ name: "geolocation" });
+      if (perm.state !== "granted") return null;
+    } catch {
+      return null;
+    }
+    if (geoLocationPromise) return geoLocationPromise;
+    geoLocationPromise = new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = Number(pos?.coords?.latitude);
+          const lon = Number(pos?.coords?.longitude);
+          if (!Number.isFinite(lat) || !Number.isFinite(lon)) return resolve(null);
+          resolve({ lat, lon });
+        },
+        () => resolve(null),
+        { enableHighAccuracy: false, maximumAge: 5 * 60 * 1000, timeout: 1200 },
+      );
+    });
+    return geoLocationPromise;
+  };
+
+  const haversineKm = (lat1, lon1, lat2, lon2) => {
+    const toRad = (d) => (d * Math.PI) / 180;
+    const R = 6371;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+  };
+
+  const applyGeoDistanceBoost = (places, geo, queryText) => {
+    if (!geo || !Array.isArray(places) || places.length <= 1) return places;
+    const q = String(queryText || "").toLowerCase();
+    const nearMeIntent = /\b(near me|nearby|around me|closest|nearest)\b/.test(q);
+    const ranked = places.map((p, idx) => ({
+      p,
+      idx,
+      dKm: haversineKm(geo.lat, geo.lon, p.lat, p.lon),
+    }));
+    ranked.sort((a, b) => {
+      /** Keep base ranking influential while blending in true proximity. */
+      const aScore = a.idx * (nearMeIntent ? 0.55 : 0.82) + a.dKm * (nearMeIntent ? 1.2 : 0.45);
+      const bScore = b.idx * (nearMeIntent ? 0.55 : 0.82) + b.dKm * (nearMeIntent ? 1.2 : 0.45);
+      if (aScore !== bScore) return aScore - bScore;
+      return a.idx - b.idx;
+    });
+    return ranked.map((r) => r.p);
+  };
+
+  const PROFILE_KEY = "full-map-profile-v1";
+
+  const _normProfileKey = (value) =>
+    String(value || "")
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9 ]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 48);
+
+  const _loadProfile = () => {
+    try {
+      const raw = localStorage.getItem(PROFILE_KEY);
+      if (!raw) return { poi: {}, city: {}, country: {} };
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return { poi: {}, city: {}, country: {} };
+      return {
+        poi: parsed.poi && typeof parsed.poi === "object" ? parsed.poi : {},
+        city: parsed.city && typeof parsed.city === "object" ? parsed.city : {},
+        country: parsed.country && typeof parsed.country === "object" ? parsed.country : {},
+      };
+    } catch {
+      return { poi: {}, city: {}, country: {} };
+    }
+  };
+
+  const _saveProfile = (profile) => {
+    try {
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+    } catch {
+      /* ignore quota/private mode issues */
+    }
+  };
+
+  const recordPlacePreference = (place) => {
+    const profile = _loadProfile();
+    const bump = (bucket, key, add = 1) => {
+      if (!key) return;
+      const next = Math.min(60, Number(bucket[key] || 0) + add);
+      bucket[key] = next;
+    };
+    bump(profile.poi, _normProfileKey(place.poi), 2);
+    bump(profile.city, _normProfileKey(place.city), 1);
+    bump(profile.country, _normProfileKey(place.country), 1);
+    _saveProfile(profile);
+  };
+
+  const applyPersonalizedOrdering = (places) => {
+    const profile = _loadProfile();
+    const scoreFor = (place) => {
+      const poi = _normProfileKey(place.poi);
+      const city = _normProfileKey(place.city);
+      const country = _normProfileKey(place.country);
+      const poiScore = Number(profile.poi[poi] || 0) * 2.4;
+      const cityScore = Number(profile.city[city] || 0) * 1.6;
+      const countryScore = Number(profile.country[country] || 0) * 0.9;
+      return poiScore + cityScore + countryScore;
+    };
+    const ranked = places.map((p, idx) => ({ p, idx, score: scoreFor(p) }));
+    const hasSignal = ranked.some((r) => r.score >= 1.5);
+    if (!hasSignal) return places;
+    ranked.sort((a, b) => b.score - a.score || a.idx - b.idx);
+    return ranked.map((r) => r.p);
+  };
+
   /**
    * Stale-payload guard for pre-v1.3.4 server responses whose wiki field was
    * attached via geosearch (nearest nearby article). Version-1.3.4+ servers
@@ -446,10 +571,15 @@
               }))
               .slice(0, 5)
           : [],
-        taConfigured: payload.taConfigured === true,
+        taConfigured:
+          payload.taConfigured === true ||
+          String(payload.reviewSource || "").toLowerCase() === "tripadvisor" ||
+          Number.isFinite(Number(payload.reviewRating)) ||
+          (Array.isArray(payload.taPhotos) && payload.taPhotos.length > 0) ||
+          (Array.isArray(payload.taReviews) && payload.taReviews.length > 0),
       });
     }
-    return places;
+    return applyPersonalizedOrdering(places);
   };
 
   const ensureLeaflet = async () => {
@@ -1001,6 +1131,7 @@
       selectedIndex = idx;
       const place = places[idx];
       const marker = markers[idx];
+      recordPlacePreference(place);
 
       resultsEl.querySelectorAll(".fm-result").forEach((el) => {
         const match = Number(el.getAttribute("data-fm-index")) === idx;
@@ -1138,12 +1269,15 @@
 
     const places = parseResults(container);
     if (places.length === 0) return;
+    const queryText = new URLSearchParams(window.location.search).get("q") || "";
+    const geo = await getBrowserLocationIfGranted();
+    const rankedPlaces = applyGeoDistanceBoost(places, geo, queryText);
 
-    const sig = getSignature(places);
+    const sig = getSignature(rankedPlaces);
     if (sig === lastSignature) return;
     lastSignature = sig;
     destroyActiveView();
-    await renderMapLayout(container, places);
+    await renderMapLayout(container, rankedPlaces);
   };
 
   const scheduleRender = () => {
