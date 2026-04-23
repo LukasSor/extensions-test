@@ -530,7 +530,9 @@
 
   const renderGallery = (place) => {
     const photos = Array.isArray(place.taPhotos) ? place.taPhotos : [];
-    const hero = place.image || photos[0]?.src;
+    /** Prefer TA photos (about this place) over the wiki thumbnail, which may
+     *  come from an unrelated nearby article that still slipped through. */
+    const hero = photos[0]?.src || place.image;
     if (!hero && photos.length === 0) return "";
     const heroSrc = hero ? proxiedImageSrc(hero) : "";
     const tiles = photos

@@ -234,6 +234,35 @@ const fetchWikiPreviewByCoord = async (lat, lon) => {
   return preview;
 };
 
+/**
+ * Wikipedia geosearch returns the nearest article within ~1.2km, which is
+ * frequently a different nearby landmark (e.g. airfield next to a Burger King).
+ * Only trust it when the article title overlaps the place name meaningfully —
+ * otherwise we'd attach a random description/photo that misleads the user.
+ */
+const _normalizeForMatch = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+const isWikiRelevantToPlace = (wikiTitle, placeName) => {
+  const wt = _normalizeForMatch(wikiTitle);
+  const pn = _normalizeForMatch(placeName);
+  if (!wt || !pn) return false;
+  if (wt === pn) return true;
+  if (wt.includes(pn) || pn.includes(wt)) return true;
+
+  const wTokens = new Set(wt.split(" ").filter((t) => t.length >= 4));
+  const pTokens = pn.split(" ").filter((t) => t.length >= 4);
+  const shared = pTokens.filter((t) => wTokens.has(t));
+  if (shared.length >= 2) return true;
+  if (shared.length === 1 && shared[0].length >= 6) return true;
+  return false;
+};
+
 const withTimeout = async (promise, ms = 2600) => {
   let timeoutId = null;
   const timeout = new Promise((resolve) => {
@@ -267,7 +296,7 @@ let cacheLoadPromise = null;
 let cacheDirty = false;
 
 const emptyEnrichmentCache = () => ({
-  v: 5,
+  v: 6,
   nominatim: {},
   tripadvisor: {},
   wiki: {},
@@ -307,13 +336,13 @@ const ensureEnrichmentCacheLoaded = async () => {
       if (
         parsed &&
         typeof parsed === "object" &&
-        parsed.v === 5 &&
+        parsed.v === 6 &&
         parsed.nominatim &&
         parsed.tripadvisor &&
         parsed.wiki
       ) {
         enrichmentCache = {
-          v: 5,
+          v: 6,
           nominatim: { ...parsed.nominatim },
           tripadvisor: { ...parsed.tripadvisor },
           wiki: { ...parsed.wiki },
@@ -1083,8 +1112,18 @@ const fullMapTab = {
     const enriched = await Promise.all(
       pagePlaces.map(async (place, index) => {
         if (index > 10) return place;
+        /** TA already gave us description + photos — skip wiki entirely. */
+        if (
+          safeTrim(place.taDescription) &&
+          Array.isArray(place.taPhotos) &&
+          place.taPhotos.length > 0
+        ) {
+          return place;
+        }
         const wiki = await withTimeout(fetchWikiPreviewByCoord(place.lat, place.lon), 2200);
         if (!wiki) return place;
+        /** Geosearch finds the closest article, not necessarily this place. */
+        if (!isWikiRelevantToPlace(wiki.title, place.name)) return place;
         return {
           ...place,
           wikiTitle: sanitizeText(wiki.title),
